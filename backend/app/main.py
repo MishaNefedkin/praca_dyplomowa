@@ -94,3 +94,17 @@ def service_page(slug: str) -> FileResponse:
     if filename is None:
         raise HTTPException(status_code=404, detail="Service page not found")
     return FileResponse(FRONTEND_DIR / "services" / filename)
+
+
+@app.get("/projects/{slug}", include_in_schema=False)
+def project_page(slug: str) -> FileResponse:
+    project_pages = {
+        "willa-panorama": "willa-panorama.html",
+        "zielone-tarasy": "zielone-tarasy.html",
+        "nowa-era": "nowa-era.html",
+        "river-view": "river-view.html",
+    }
+    filename = project_pages.get(slug)
+    if filename is None:
+        raise HTTPException(status_code=404, detail="Project page not found")
+    return FileResponse(FRONTEND_DIR / "projects" / filename)
