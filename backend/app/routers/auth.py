@@ -61,6 +61,14 @@ def me(user: Annotated[models.User, Depends(get_current_user)]) -> models.User:
     return user
 
 
+@router.get("/users", response_model=list[schemas.UserRead])
+def list_users(
+    db: Annotated[Session, Depends(get_db)],
+    _actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> list[models.User]:
+    return db.query(models.User).order_by(models.User.created_at.desc()).all()
+
+
 @router.post("/users", response_model=schemas.UserRead)
 def create_user(
     payload: schemas.UserCreate,

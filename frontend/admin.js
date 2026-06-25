@@ -7,6 +7,7 @@ const listState = {
   offers: { offset: 0 },
   activity: { offset: 0 },
   audit: { offset: 0 },
+  users: { offset: 0 },
 };
 let currentUser = null;
 
@@ -21,6 +22,20 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function formatStatus(value) {
+  const labels = {
+    new: "Nowe",
+    in_progress: "W trakcie",
+    offer_sent: "Oferta wysłana",
+    closed: "Zamknięte",
+    draft: "Szkic",
+    sent: "Wysłana",
+    accepted: "Zaakceptowana",
+    rejected: "Odrzucona",
+  };
+  return labels[value] || value;
 }
 
 async function api(path, options = {}) {
@@ -66,15 +81,21 @@ function setNavLinkHidden(hash, hidden) {
 function applyRoleUi() {
   const canReadAnalytics = hasRole("admin", "manager");
   const canReadProtectedLogs = hasRole("admin", "manager");
+  const canWriteCrm = hasRole("admin", "sales");
   const canWriteOffers = hasRole("admin", "sales");
+  const canManageUsers = hasRole("admin");
 
   setElementHidden("dashboard", !canReadAnalytics);
   setElementHidden("activity", !canReadProtectedLogs);
   setElementHidden("audit", !canReadProtectedLogs);
+  setElementHidden("client-form", !canWriteCrm);
+  setElementHidden("inquiry-form", !canWriteCrm);
   setElementHidden("offer-form", !canWriteOffers);
+  setElementHidden("users", !canManageUsers);
   setNavLinkHidden("#dashboard", !canReadAnalytics);
   setNavLinkHidden("#activity", !canReadProtectedLogs);
   setNavLinkHidden("#audit", !canReadProtectedLogs);
+  setNavLinkHidden("#users", !canManageUsers);
 }
 
 async function loadCurrentUser() {
@@ -122,6 +143,13 @@ function renderActionError(error) {
   setStatus(`Operacja nie powiodła się: ${error.message}`);
 }
 
+function statusSelect(type, id, currentValue, values) {
+  const options = values
+    .map((value) => `<option value="${escapeHtml(value)}" ${value === currentValue ? "selected" : ""}>${escapeHtml(formatStatus(value))}</option>`)
+    .join("");
+  return `<select class="status-select" data-status-type="${escapeHtml(type)}" data-status-id="${escapeHtml(id)}">${options}</select>`;
+}
+
 async function showApp(isLoggedIn) {
   document.getElementById("login-panel").classList.toggle("hidden", isLoggedIn);
   document.getElementById("admin-content").classList.toggle("hidden", !isLoggedIn);
@@ -149,9 +177,10 @@ async function loadDashboard() {
   let offers;
   let logs;
   let auditLogs;
+  let users;
 
   try {
-    [kpi, topPages, alerts, clients, inquiries, offers, logs, auditLogs] = await Promise.all([
+    [kpi, topPages, alerts, clients, inquiries, offers, logs, auditLogs, users] = await Promise.all([
       hasRole("admin", "manager") ? optionalApi("/analytics/kpi", null) : Promise.resolve(null),
       hasRole("admin", "manager") ? optionalApi("/analytics/top-pages", []) : Promise.resolve([]),
       hasRole("admin", "manager") ? optionalApi("/analytics/alerts", []) : Promise.resolve([]),
@@ -160,6 +189,7 @@ async function loadDashboard() {
       api(buildListPath("/offers", { limit: PAGE_LIMIT, offset: listState.offers.offset })),
       hasRole("admin", "manager") ? optionalApi(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset }), []) : Promise.resolve([]),
       hasRole("admin", "manager") ? optionalApi(buildListPath("/audit/logs", { limit: PAGE_LIMIT, offset: listState.audit.offset }), []) : Promise.resolve([]),
+      hasRole("admin") ? optionalApi("/auth/users", []) : Promise.resolve([]),
     ]);
     status.textContent = "";
   } catch (error) {
@@ -184,6 +214,17 @@ async function loadDashboard() {
     document.getElementById("alerts").innerHTML = alerts.map((alert) => `<p>${escapeHtml(alert.message)}</p>`).join("") || "<p class='muted'>Brak alertów.</p>";
   }
 
+  const clientActions = (row) => {
+    const actions = [`<button data-client="${row.id}" class="link-button">Timeline</button>`];
+    if (hasRole("admin", "manager")) {
+      actions.push(`<button data-export="${row.id}" class="link-button">Eksport</button>`);
+    }
+    if (hasRole("admin")) {
+      actions.push(`<button data-anonymize="${row.id}" class="link-button danger">Anonimizuj</button>`);
+    }
+    return actions.join(" ");
+  };
+
   document.getElementById("clients-table").innerHTML = table(
     clients,
     [
@@ -193,27 +234,44 @@ async function loadDashboard() {
       { key: "phone", label: "Telefon" },
       { key: "created_at", label: "Utworzono", render: (row) => new Date(row.created_at).toLocaleString() },
     ],
-    (row) => `<button data-client="${row.id}" class="link-button">Timeline</button> <button data-export="${row.id}" class="link-button">Eksport</button> <button data-anonymize="${row.id}" class="link-button danger">Anonimizuj</button>`,
+    clientActions,
   );
   renderPager("clients-pager", "clients", clients);
 
-  document.getElementById("inquiries-table").innerHTML = table(inquiries, [
-    { key: "id", label: "ID" },
-    { key: "client_id", label: "Klient" },
-    { key: "status", label: "Status" },
-    { key: "message", label: "Wiadomość" },
-    { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
-  ]);
+  document.getElementById("inquiries-table").innerHTML = table(
+    inquiries,
+    [
+      { key: "id", label: "ID" },
+      { key: "client_id", label: "Klient" },
+      { key: "status", label: "Status", render: (row) => formatStatus(row.status) },
+      { key: "message", label: "Wiadomość" },
+      { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
+    ],
+    hasRole("admin", "sales") ? (row) => statusSelect("inquiry", row.id, row.status, ["new", "in_progress", "offer_sent", "closed"]) : null,
+  );
   renderPager("inquiries-pager", "inquiries", inquiries);
 
-  document.getElementById("offers-table").innerHTML = table(offers, [
-    { key: "id", label: "ID" },
-    { key: "inquiry_id", label: "Zapytanie" },
-    { key: "value", label: "Wartość" },
-    { key: "status", label: "Status" },
-    { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
-  ]);
+  document.getElementById("offers-table").innerHTML = table(
+    offers,
+    [
+      { key: "id", label: "ID" },
+      { key: "inquiry_id", label: "Zapytanie" },
+      { key: "value", label: "Wartość" },
+      { key: "status", label: "Status", render: (row) => formatStatus(row.status) },
+      { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
+    ],
+    hasRole("admin", "sales") ? (row) => statusSelect("offer", row.id, row.status, ["draft", "sent", "accepted", "rejected"]) : null,
+  );
   renderPager("offers-pager", "offers", offers);
+
+  if (hasRole("admin")) {
+    document.getElementById("users-table").innerHTML = table(users, [
+      { key: "id", label: "ID" },
+      { key: "login", label: "Login" },
+      { key: "role", label: "Rola" },
+      { key: "created_at", label: "Utworzono", render: (row) => new Date(row.created_at).toLocaleString() },
+    ]);
+  }
 
   if (hasRole("admin", "manager")) {
     document.getElementById("activity-table").innerHTML = table(logs, [
@@ -282,6 +340,48 @@ document.getElementById("client-search-reset").addEventListener("click", () => {
   loadDashboard();
 });
 
+document.getElementById("client-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  try {
+    await api("/clients", {
+      method: "POST",
+      body: JSON.stringify({
+        name: data.name.trim(),
+        email: data.email.trim(),
+        phone: data.phone.trim() || null,
+      }),
+    });
+    event.currentTarget.reset();
+    listState.clients.offset = 0;
+    setStatus("Klient został dodany.");
+    loadDashboard();
+  } catch (error) {
+    renderActionError(error);
+  }
+});
+
+document.getElementById("inquiry-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  try {
+    await api("/inquiries/admin", {
+      method: "POST",
+      body: JSON.stringify({
+        client_id: Number(data.client_id),
+        message: data.message.trim(),
+        status: data.status,
+      }),
+    });
+    event.currentTarget.reset();
+    listState.inquiries.offset = 0;
+    setStatus("Zapytanie zostało dodane.");
+    loadDashboard();
+  } catch (error) {
+    renderActionError(error);
+  }
+});
+
 document.getElementById("offer-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
@@ -295,6 +395,41 @@ document.getElementById("offer-form").addEventListener("submit", async (event) =
     loadDashboard();
   } catch (error) {
     renderActionError(error);
+  }
+});
+
+document.getElementById("user-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  try {
+    await api("/auth/users", {
+      method: "POST",
+      body: JSON.stringify({
+        login: data.login.trim(),
+        password: data.password,
+        role: data.role,
+      }),
+    });
+    event.currentTarget.reset();
+    setStatus("Użytkownik został dodany.");
+    loadDashboard();
+  } catch (error) {
+    renderActionError(error);
+  }
+});
+
+document.addEventListener("change", async (event) => {
+  const control = event.target.closest("[data-status-type]");
+  if (!control) return;
+
+  const endpoint = control.dataset.statusType === "inquiry" ? `/inquiries/${control.dataset.statusId}` : `/offers/${control.dataset.statusId}`;
+  try {
+    await api(endpoint, { method: "PUT", body: JSON.stringify({ status: control.value }) });
+    setStatus("Status został zaktualizowany.");
+    loadDashboard();
+  } catch (error) {
+    renderActionError(error);
+    loadDashboard();
   }
 });
 

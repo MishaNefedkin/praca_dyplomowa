@@ -289,6 +289,24 @@ def test_audit_log_access_is_limited_by_role() -> None:
     assert sales_audit_response.status_code == 403
 
 
+def test_admin_can_list_users() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        create_user_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "listed-sales", "password": "sales12345", "role": "sales"},
+        )
+        assert create_user_response.status_code == 200
+
+        users_response = client.get("/auth/users", headers=admin_headers)
+
+    assert users_response.status_code == 200
+    logins = [user["login"] for user in users_response.json()]
+    assert "admin" in logins
+    assert "listed-sales" in logins
+
+
 def test_roles_limit_manager_write_access() -> None:
     with TestClient(app) as client:
         admin_headers = auth_headers(client)
