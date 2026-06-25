@@ -3,15 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BuildWise CRM | Firma budowlana</title>
-    <link rel="stylesheet" href="/static/styles.css?v=layout-fix-2" />
-    <script defer src="/static/tracking.js?v=layout-fix-2"></script>
+    <title>BUDOMAX | Firma budowlana</title>
+    <link rel="stylesheet" href="/static/styles.css?v=budomax-ref-1" />
+    <script defer src="/static/tracking.js?v=budomax-ref-1"></script>
   </head>
   <body class="public-page">
     <div class="site-shell">
       <header class="site-header">
-        <a class="brand" href="/">BuildWise</a>
+        <a class="brand" href="/" aria-label="BUDOMAX strona główna">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-copy">
+            <strong>BUDOMAX</strong>
+            <small>Firma budowlana</small>
+          </span>
+        </a>
         <nav>
+          <a class="active" href="/">Strona główna</a>
           <a href="#services">Usługi</a>
           <a href="#portfolio">Realizacje</a>
           <a href="#about">O firmie</a>
@@ -23,46 +30,48 @@
       <main>
         <section class="hero">
           <div class="hero-copy">
-            <span class="eyebrow">Firma remontowo-budowlana</span>
-            <h1>Prace budowlane prowadzone przejrzyście od pierwszego kontaktu</h1>
+            <span class="eyebrow" aria-hidden="true"></span>
+            <h1>Budujemy przyszłość na solidnych fundamentach</h1>
             <p>
-              Pomagamy klientom zaplanować remont, budowę lub wykończenie wnętrz.
-              Każde zapytanie trafia do systemu CRM, dzięki czemu kontakt,
-              oferta i historia ustaleń są uporządkowane w jednym miejscu.
+              Kompleksowa realizacja inwestycji budowlanych - od projektu po
+              wykończenie. Jakość, terminowość i bezpieczeństwo na każdym etapie.
             </p>
             <div class="hero-actions">
-              <a class="button primary cta-track" href="#contact" data-cta="hero-offer">Zapytaj o ofertę</a>
-              <a class="button secondary cta-track" href="#portfolio" data-cta="hero-portfolio">Zobacz realizacje</a>
-            </div>
-          </div>
-          <div class="hero-photo" aria-label="Wizualizacja realizacji budowlanej">
-            <div class="hero-stat">
-              <strong>24h</strong>
-              <span>średni czas odpowiedzi na zapytanie</span>
+              <a class="button primary cta-track" href="#contact" data-cta="hero-offer">Poproś o wycenę</a>
             </div>
           </div>
         </section>
 
         <section id="services" class="section services-section">
           <h2>Nasze usługi</h2>
-          <div class="grid three">
+          <div class="grid four">
             <article class="service-card">
-              <div class="service-media renovation"></div>
-              <h3>Remonty mieszkań</h3>
-              <p>Kompleksowe prace wykończeniowe, modernizacje i adaptacje wnętrz.</p>
-              <a class="more-link cta-track" href="#contact" data-cta="service-renovation">Zobacz więcej →</a>
+              <div class="service-media homes"></div>
+              <div class="service-icon" aria-hidden="true">⌂</div>
+              <h3>Budowa domów jednorodzinnych</h3>
+              <p>Budujemy energooszczędne i nowoczesne domy dopasowane do Twoich potrzeb.</p>
+              <a class="more-link cta-track" href="/services/homes" data-cta="service-homes">Dowiedz się więcej <span aria-hidden="true">-></span></a>
             </article>
             <article class="service-card">
-              <div class="service-media construction"></div>
-              <h3>Prace budowlane</h3>
-              <p>Realizacja etapów budowy, koordynacja prac i przygotowanie ofert.</p>
-              <a class="more-link cta-track" href="#contact" data-cta="service-building">Zobacz więcej →</a>
+              <div class="service-media multifamily"></div>
+              <div class="service-icon" aria-hidden="true">▥</div>
+              <h3>Budynki wielorodzinne</h3>
+              <p>Realizujemy inwestycje mieszkaniowe w wysokim standardzie, zgodnie z harmonogramem.</p>
+              <a class="more-link cta-track" href="/services/multifamily" data-cta="service-multifamily">Dowiedz się więcej <span aria-hidden="true">-></span></a>
             </article>
             <article class="service-card">
               <div class="service-media interiors"></div>
-              <h3>Wykończenia wnętrz</h3>
-              <p>Dokładne kosztorysy, harmonogramy i kontakt dopasowany do klienta.</p>
-              <a class="more-link cta-track" href="#contact" data-cta="service-interiors">Zobacz więcej →</a>
+              <div class="service-icon" aria-hidden="true">⚒</div>
+              <h3>Remonty i modernizacje</h3>
+              <p>Kompleksowe remonty mieszkań, domów i obiektów - od koncepcji po wykończenie.</p>
+              <a class="more-link cta-track" href="/services/renovation" data-cta="service-renovation">Dowiedz się więcej <span aria-hidden="true">-></span></a>
+            </article>
+            <article class="service-card">
+              <div class="service-media commercial"></div>
+              <div class="service-icon" aria-hidden="true">▣</div>
+              <h3>Budownictwo komercyjne</h3>
+              <p>Budujemy hale, biurowce i obiekty usługowe dostosowane do potrzeb biznesu.</p>
+              <a class="more-link cta-track" href="/services/commercial" data-cta="service-commercial">Dowiedz się więcej <span aria-hidden="true">-></span></a>
             </article>
           </div>
         </section>
@@ -70,10 +79,36 @@
         <section id="portfolio" class="section alt portfolio-section">
           <h2>Portfolio zrealizowanych inwestycji</h2>
           <div class="portfolio-grid">
-            <article class="portfolio-item portfolio-one"><span>Remont apartamentu 72 m²</span></article>
-            <article class="portfolio-item portfolio-two"><span>Elewacja domu jednorodzinnego</span></article>
-            <article class="portfolio-item portfolio-three"><span>Adaptacja lokalu usługowego</span></article>
-            <article class="portfolio-item portfolio-four"><span>Wykończenie segmentu</span></article>
+            <article class="portfolio-item portfolio-one">
+              <div class="portfolio-meta">
+                <strong>Willa Panorama</strong>
+                <span>Kraków</span>
+                <em>Dom jednorodzinny</em>
+              </div>
+              <p>Luksusowy dom jednorodzinny z basenem i garażem dwustanowiskowym. Powierzchnia: 280 m²</p>
+              <a class="more-link cta-track" href="#contact" data-cta="portfolio-panorama">Zobacz szczegóły <span aria-hidden="true">-></span></a>
+            </article>
+            <article class="portfolio-item portfolio-two">
+              <div class="portfolio-meta">
+                <strong>Osiedle Zielone Tarasy</strong>
+                <span>Wrocław</span>
+                <em>Budynki wielorodzinne</em>
+              </div>
+            </article>
+            <article class="portfolio-item portfolio-three">
+              <div class="portfolio-meta">
+                <strong>Centrum Biznesowe Nowa Era</strong>
+                <span>Poznań</span>
+                <em>Budownictwo komercyjne</em>
+              </div>
+            </article>
+            <article class="portfolio-item portfolio-four">
+              <div class="portfolio-meta">
+                <strong>Apartamenty River View</strong>
+                <span>Gdańsk</span>
+                <em>Remont i modernizacja</em>
+              </div>
+            </article>
           </div>
         </section>
 
@@ -81,22 +116,35 @@
           <h2>Referencje klientów</h2>
           <div class="grid three">
             <article class="reference-card">
-              <strong>Anna K.</strong>
-              <p>“Sprawny kontakt, jasna oferta i terminowa realizacja remontu.”</p>
+              <div class="avatar avatar-one" aria-hidden="true"></div>
+              <div>
+                <strong>Mateusz Kowalski</strong>
+                <span class="stars" aria-label="5 gwiazdek">★★★★★</span>
+                <p>Profesjonalne podejście, świetny kontakt i terminowa realizacja. Nasz dom został wykonany dokładnie tak, jak chcieliśmy.</p>
+              </div>
             </article>
             <article class="reference-card">
-              <strong>Piotr M.</strong>
-              <p>“Firma szybko odpowiedziała na zapytanie i przygotowała kosztorys.”</p>
+              <div class="avatar avatar-two" aria-hidden="true"></div>
+              <div>
+                <strong>Anna Nowak</strong>
+                <span class="stars" aria-label="5 gwiazdek">★★★★★</span>
+                <p>Remont mieszkania przebiegł sprawnie i bez stresu. Ekipa rzetelna, a efekt przerósł nasze oczekiwania.</p>
+              </div>
             </article>
             <article class="reference-card">
-              <strong>DomInvest</strong>
-              <p>“Przejrzysta komunikacja podczas całego procesu budowlanego.”</p>
+              <div class="avatar avatar-three" aria-hidden="true"></div>
+              <div>
+                <strong>Piotr Zieliński</strong>
+                <span class="stars" aria-label="5 gwiazdek">★★★★★</span>
+                <p>Współpraca przy budowie biurowca była na najwyższym poziomie. Polecam jako solidnego partnera.</p>
+              </div>
             </article>
           </div>
         </section>
 
         <section class="cta-band">
-          <h2>Zainteresowany realizacją? Skontaktuj się z nami</h2>
+          <h2>Masz projekt? Zrealizujmy go razem.</h2>
+          <p>Niezależnie od skali inwestycji - pomożemy Ci przejść przez cały proces sprawnie, bezpiecznie i z gwarancją jakości.</p>
           <a class="button primary cta-track" href="#contact" data-cta="middle-contact">Wyślij zapytanie</a>
         </section>
       </main>
@@ -104,22 +152,30 @@
       <footer id="contact" class="footer-contact">
         <div class="footer-info">
           <h2>Dane kontaktowe / O firmie</h2>
-          <p>BuildWise · ul. Budowlana 12 · 40-000 Chorzów</p>
-          <p>kontakt@firma-budowlana.pl · +48 500 100 200</p>
+          <p>BUDOMAX to firma budowlana z wieloletnim doświadczeniem. Realizujemy inwestycje mieszkaniowe, komercyjne i przemysłowe w całej Polsce.</p>
+          <p>ul. Budowlana 12<br />31-123 Kraków</p>
+          <p>+48 600 123 456<br />biuro@budomax.pl</p>
+          <p>Pon. - Pt.: 7:00 - 17:00<br />Sobota: 8:00 - 14:00</p>
+          <div class="socials" aria-label="Media społecznościowe">
+            <a href="/" aria-label="Facebook">f</a>
+            <a href="/" aria-label="Instagram">◎</a>
+            <a href="/" aria-label="LinkedIn">in</a>
+            <a href="/" aria-label="YouTube">▶</a>
+          </div>
           <a href="/admin">Panel administracyjny</a>
         </div>
 
         <form id="contact-form" class="footer-form">
           <h2>Formularz kontaktowy</h2>
-          <label>Imię i nazwisko<input name="name" required minlength="2" /></label>
-          <label>Email<input name="email" type="email" required /></label>
-          <label>Telefon<input name="phone" /></label>
-          <label>Opis zapytania<textarea name="message" required minlength="5"></textarea></label>
+          <label><span>Imię i nazwisko</span><input name="name" placeholder="Imię i nazwisko" required minlength="2" /></label>
+          <label><span>Adres e-mail</span><input name="email" type="email" placeholder="Adres e-mail" required /></label>
+          <label><span>Telefon</span><input name="phone" placeholder="Telefon" /></label>
+          <label><span>Wiadomość</span><textarea name="message" placeholder="Wiadomość" required minlength="5"></textarea></label>
           <label class="check">
             <input name="consent" type="checkbox" required />
             Wyrażam zgodę na kontakt i przetwarzanie danych zgodnie z RODO.
           </label>
-          <button class="button primary cta-track" type="submit" data-cta="footer-form-submit">Wyślij zapytanie</button>
+          <button class="button primary cta-track" type="submit" data-cta="footer-form-submit">Wyślij wiadomość</button>
           <p id="contact-status" class="status" role="status" aria-live="polite"></p>
         </form>
       </footer>

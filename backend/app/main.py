@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -70,3 +70,17 @@ def index() -> FileResponse:
 @app.get("/admin", include_in_schema=False)
 def admin() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "admin.html")
+
+
+@app.get("/services/{slug}", include_in_schema=False)
+def service_page(slug: str) -> FileResponse:
+    service_pages = {
+        "homes": "homes.html",
+        "multifamily": "multifamily.html",
+        "renovation": "renovation.html",
+        "commercial": "commercial.html",
+    }
+    filename = service_pages.get(slug)
+    if filename is None:
+        raise HTTPException(status_code=404, detail="Service page not found")
+    return FileResponse(FRONTEND_DIR / "services" / filename)
