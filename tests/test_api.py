@@ -44,6 +44,36 @@ def login_headers(client: TestClient, login: str, password: str) -> dict[str, st
     return {"Authorization": f"Bearer {token}"}
 
 
+def create_client_record(client: TestClient, headers: dict[str, str], email: str = "api.client@example.com") -> dict:
+    response = client.post(
+        "/clients",
+        headers=headers,
+        json={"name": "API Client", "email": email, "phone": "+48 600 555 000"},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def create_inquiry_record(client: TestClient, headers: dict[str, str], client_id: int) -> dict:
+    response = client.post(
+        "/inquiries/admin",
+        headers=headers,
+        json={"client_id": client_id, "message": "Need a focused API test offer.", "status": "new"},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def create_offer_record(client: TestClient, headers: dict[str, str], inquiry_id: int) -> dict:
+    response = client.post(
+        "/offers",
+        headers=headers,
+        json={"inquiry_id": inquiry_id, "value": 4500, "status": "draft"},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
 def test_login_and_protected_endpoint() -> None:
     with TestClient(app) as client:
         unauthenticated = client.get("/clients")
@@ -318,6 +348,78 @@ def test_admin_can_list_users() -> None:
     assert "listed-sales" in logins
 
 
+def test_admin_can_update_user_role_and_password() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        create_user_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "editable-user", "password": "sales12345", "role": "sales"},
+        )
+        assert create_user_response.status_code == 200
+        user_id = create_user_response.json()["id"]
+
+        update_response = client.put(
+            f"/auth/users/{user_id}",
+            headers=admin_headers,
+            json={"role": "manager", "password": "manager12345"},
+        )
+        login_response = client.post("/auth/login", json={"login": "editable-user", "password": "manager12345"})
+        audit_response = client.get("/audit/logs", headers=admin_headers)
+
+    assert update_response.status_code == 200
+    assert update_response.json()["role"] == "manager"
+    assert login_response.status_code == 200
+    assert "user.update" in [entry["action"] for entry in audit_response.json()]
+
+
+def test_user_delete_rejects_self_delete_and_non_admin_access() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        sales_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "delete-sales", "password": "sales12345", "role": "sales"},
+        )
+        assert sales_response.status_code == 200
+        sales_headers = login_headers(client, "delete-sales", "sales12345")
+
+        users_response = client.get("/auth/users", headers=admin_headers)
+        admin_id = next(user["id"] for user in users_response.json() if user["login"] == "admin")
+        self_delete_response = client.delete(f"/auth/users/{admin_id}", headers=admin_headers)
+        sales_delete_response = client.delete(f"/auth/users/{admin_id}", headers=sales_headers)
+
+    assert self_delete_response.status_code == 400
+    assert sales_delete_response.status_code == 403
+
+
+def test_admin_can_delete_user_but_cannot_remove_last_admin_role() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        sales_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "deleted-sales", "password": "sales12345", "role": "sales"},
+        )
+        assert sales_response.status_code == 200
+
+        delete_response = client.delete(f"/auth/users/{sales_response.json()['id']}", headers=admin_headers)
+        deleted_login_response = client.post("/auth/login", json={"login": "deleted-sales", "password": "sales12345"})
+        users_response = client.get("/auth/users", headers=admin_headers)
+        admin_id = next(user["id"] for user in users_response.json() if user["login"] == "admin")
+        last_admin_update_response = client.put(
+            f"/auth/users/{admin_id}",
+            headers=admin_headers,
+            json={"role": "manager"},
+        )
+        audit_response = client.get("/audit/logs", headers=admin_headers)
+
+    assert delete_response.status_code == 200
+    assert deleted_login_response.status_code == 401
+    assert last_admin_update_response.status_code == 400
+    assert "user.delete" in [entry["action"] for entry in audit_response.json()]
+
+
 def test_roles_limit_manager_write_access() -> None:
     with TestClient(app) as client:
         admin_headers = auth_headers(client)
@@ -434,6 +536,148 @@ def test_client_update_rejects_duplicate_email() -> None:
         )
 
     assert update_response.status_code == 409
+
+
+def test_admin_can_delete_client_and_audit_action() -> None:
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        client_record = create_client_record(client, headers, "delete.client@example.com")
+        client_id = client_record["id"]
+        inquiry_record = create_inquiry_record(client, headers, client_id)
+        create_offer_record(client, headers, inquiry_record["id"])
+
+        delete_response = client.delete(f"/clients/{client_id}", headers=headers)
+        get_response = client.get(f"/clients/{client_id}", headers=headers)
+        audit_response = client.get("/audit/logs", headers=headers)
+
+    assert delete_response.status_code == 200
+    assert delete_response.json()["id"] == client_id
+    assert get_response.status_code == 404
+    assert "client.delete" in [entry["action"] for entry in audit_response.json()]
+
+
+def test_manager_cannot_delete_client() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        create_user_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "client-delete-manager", "password": "manager123", "role": "manager"},
+        )
+        assert create_user_response.status_code == 200
+        client_record = create_client_record(client, admin_headers, "manager.delete.client@example.com")
+        manager_headers = login_headers(client, "client-delete-manager", "manager123")
+
+        delete_response = client.delete(f"/clients/{client_record['id']}", headers=manager_headers)
+
+    assert delete_response.status_code == 403
+
+
+def test_inquiry_detail_and_delete_endpoints() -> None:
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        client_record = create_client_record(client, headers, "inquiry.delete.client@example.com")
+        inquiry_record = create_inquiry_record(client, headers, client_record["id"])
+        inquiry_id = inquiry_record["id"]
+
+        get_response = client.get(f"/inquiries/{inquiry_id}", headers=headers)
+        delete_response = client.delete(f"/inquiries/{inquiry_id}", headers=headers)
+        missing_response = client.get(f"/inquiries/{inquiry_id}", headers=headers)
+        audit_response = client.get("/audit/logs", headers=headers)
+
+    assert get_response.status_code == 200
+    assert get_response.json()["id"] == inquiry_id
+    assert delete_response.status_code == 200
+    assert missing_response.status_code == 404
+    assert "inquiry.delete" in [entry["action"] for entry in audit_response.json()]
+
+
+def test_sales_cannot_delete_inquiry() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        create_user_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "inquiry-delete-sales", "password": "sales12345", "role": "sales"},
+        )
+        assert create_user_response.status_code == 200
+        client_record = create_client_record(client, admin_headers, "sales.delete.inquiry@example.com")
+        inquiry_record = create_inquiry_record(client, admin_headers, client_record["id"])
+        sales_headers = login_headers(client, "inquiry-delete-sales", "sales12345")
+
+        delete_response = client.delete(f"/inquiries/{inquiry_record['id']}", headers=sales_headers)
+
+    assert delete_response.status_code == 403
+
+
+def test_offer_detail_and_delete_endpoints() -> None:
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        client_record = create_client_record(client, headers, "offer.delete.client@example.com")
+        inquiry_record = create_inquiry_record(client, headers, client_record["id"])
+        offer_record = create_offer_record(client, headers, inquiry_record["id"])
+        offer_id = offer_record["id"]
+
+        get_response = client.get(f"/offers/{offer_id}", headers=headers)
+        delete_response = client.delete(f"/offers/{offer_id}", headers=headers)
+        missing_response = client.get(f"/offers/{offer_id}", headers=headers)
+        audit_response = client.get("/audit/logs", headers=headers)
+
+    assert get_response.status_code == 200
+    assert get_response.json()["id"] == offer_id
+    assert delete_response.status_code == 200
+    assert missing_response.status_code == 404
+    assert "offer.delete" in [entry["action"] for entry in audit_response.json()]
+
+
+def test_sales_cannot_delete_offer() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        create_user_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "offer-delete-sales", "password": "sales12345", "role": "sales"},
+        )
+        assert create_user_response.status_code == 200
+        client_record = create_client_record(client, admin_headers, "sales.delete.offer@example.com")
+        inquiry_record = create_inquiry_record(client, admin_headers, client_record["id"])
+        offer_record = create_offer_record(client, admin_headers, inquiry_record["id"])
+        sales_headers = login_headers(client, "offer-delete-sales", "sales12345")
+
+        delete_response = client.delete(f"/offers/{offer_record['id']}", headers=sales_headers)
+
+    assert delete_response.status_code == 403
+
+
+def test_admin_can_update_consent_active_state_and_missing_consent_returns_404() -> None:
+    with TestClient(app) as client:
+        inquiry_response = client.post(
+            "/inquiries",
+            json={
+                "name": "Consent Client",
+                "email": "consent.client@example.com",
+                "phone": "+48 604 000 000",
+                "message": "Please store and later change my consent.",
+                "session_id": "consent-session-001",
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+        assert inquiry_response.status_code == 200
+        client_id = inquiry_response.json()["client_id"]
+        headers = auth_headers(client)
+        consents_response = client.get(f"/consents/client/{client_id}", headers=headers)
+        assert consents_response.status_code == 200
+        consent_id = consents_response.json()[0]["id"]
+
+        update_response = client.put(f"/consents/{consent_id}", headers=headers, json={"active": False})
+        missing_response = client.put("/consents/999999", headers=headers, json={"active": True})
+        audit_response = client.get("/audit/logs", headers=headers)
+
+    assert update_response.status_code == 200
+    assert update_response.json()["active"] is False
+    assert missing_response.status_code == 404
+    assert "consent.update" in [entry["action"] for entry in audit_response.json()]
 
 
 def test_admin_can_export_client_personal_data() -> None:

@@ -12,6 +12,9 @@ COPY backend /app/backend
 COPY frontend /app/frontend
 COPY alembic.ini /app/alembic.ini
 COPY migrations /app/migrations
+COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint.sh
 
 EXPOSE 8000
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

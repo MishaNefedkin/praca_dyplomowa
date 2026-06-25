@@ -12,7 +12,9 @@ from ..services.audit import record_audit_log
 router = APIRouter(prefix="/clients", tags=["clients"])
 
 
-@router.get("", response_model=list[schemas.ClientRead], dependencies=[Depends(require_roles("admin", "sales", "manager"))])
+@router.get(
+    "", response_model=list[schemas.ClientRead], dependencies=[Depends(require_roles("admin", "sales", "manager"))]
+)
 def list_clients(
     db: Annotated[Session, Depends(get_db)],
     q: str | None = Query(default=None, min_length=2, max_length=120),
@@ -56,7 +58,11 @@ def create_client(
     return client
 
 
-@router.get("/{client_id}", response_model=schemas.ClientRead, dependencies=[Depends(require_roles("admin", "sales", "manager"))])
+@router.get(
+    "/{client_id}",
+    response_model=schemas.ClientRead,
+    dependencies=[Depends(require_roles("admin", "sales", "manager"))],
+)
 def get_client(client_id: int, db: Annotated[Session, Depends(get_db)]) -> models.Client:
     client = db.get(models.Client, client_id)
     if not client:
@@ -124,6 +130,33 @@ def anonymize_client(
     db.commit()
     db.refresh(client)
     return client
+
+
+@router.delete("/{client_id}", response_model=schemas.ClientRead)
+def delete_client(
+    client_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> schemas.ClientRead:
+    client = db.get(models.Client, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    deleted_client = schemas.ClientRead.model_validate(client)
+    db.query(models.ActivityLog).filter(models.ActivityLog.client_id == client.id).update(
+        {"client_id": None},
+        synchronize_session=False,
+    )
+    record_audit_log(
+        db,
+        actor,
+        action="client.delete",
+        entity_type="client",
+        entity_id=client.id,
+        details={"had_email": client.email is not None},
+    )
+    db.delete(client)
+    db.commit()
+    return deleted_client
 
 
 @router.get("/{client_id}/export")

@@ -12,7 +12,9 @@ from ..services.crm import create_inquiry_from_contact_form
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 
 
-@router.get("", response_model=list[schemas.InquiryRead], dependencies=[Depends(require_roles("admin", "sales", "manager"))])
+@router.get(
+    "", response_model=list[schemas.InquiryRead], dependencies=[Depends(require_roles("admin", "sales", "manager"))]
+)
 def list_inquiries(
     db: Annotated[Session, Depends(get_db)],
     status: schemas.InquiryStatus | None = Query(default=None),
@@ -54,6 +56,18 @@ def create_inquiry_admin(
     return inquiry
 
 
+@router.get(
+    "/{inquiry_id}",
+    response_model=schemas.InquiryRead,
+    dependencies=[Depends(require_roles("admin", "sales", "manager"))],
+)
+def get_inquiry(inquiry_id: int, db: Annotated[Session, Depends(get_db)]) -> models.Inquiry:
+    inquiry = db.get(models.Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    return inquiry
+
+
 @router.put("/{inquiry_id}", response_model=schemas.InquiryRead)
 def update_inquiry(
     inquiry_id: int,
@@ -78,3 +92,26 @@ def update_inquiry(
     db.commit()
     db.refresh(inquiry)
     return inquiry
+
+
+@router.delete("/{inquiry_id}", response_model=schemas.InquiryRead)
+def delete_inquiry(
+    inquiry_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> schemas.InquiryRead:
+    inquiry = db.get(models.Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    deleted_inquiry = schemas.InquiryRead.model_validate(inquiry)
+    record_audit_log(
+        db,
+        actor,
+        action="inquiry.delete",
+        entity_type="inquiry",
+        entity_id=inquiry.id,
+        details={"client_id": inquiry.client_id, "status": inquiry.status},
+    )
+    db.delete(inquiry)
+    db.commit()
+    return deleted_inquiry

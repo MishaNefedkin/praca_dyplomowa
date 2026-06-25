@@ -11,7 +11,9 @@ from ..services.audit import record_audit_log
 router = APIRouter(prefix="/offers", tags=["offers"])
 
 
-@router.get("", response_model=list[schemas.OfferRead], dependencies=[Depends(require_roles("admin", "sales", "manager"))])
+@router.get(
+    "", response_model=list[schemas.OfferRead], dependencies=[Depends(require_roles("admin", "sales", "manager"))]
+)
 def list_offers(
     db: Annotated[Session, Depends(get_db)],
     status: schemas.OfferStatus | None = Query(default=None),
@@ -51,6 +53,16 @@ def create_offer(
     return offer
 
 
+@router.get(
+    "/{offer_id}", response_model=schemas.OfferRead, dependencies=[Depends(require_roles("admin", "sales", "manager"))]
+)
+def get_offer(offer_id: int, db: Annotated[Session, Depends(get_db)]) -> models.Offer:
+    offer = db.get(models.Offer, offer_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return offer
+
+
 @router.put("/{offer_id}", response_model=schemas.OfferRead)
 def update_offer(
     offer_id: int,
@@ -77,3 +89,26 @@ def update_offer(
     db.commit()
     db.refresh(offer)
     return offer
+
+
+@router.delete("/{offer_id}", response_model=schemas.OfferRead)
+def delete_offer(
+    offer_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> schemas.OfferRead:
+    offer = db.get(models.Offer, offer_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    deleted_offer = schemas.OfferRead.model_validate(offer)
+    record_audit_log(
+        db,
+        actor,
+        action="offer.delete",
+        entity_type="offer",
+        entity_id=offer.id,
+        details={"inquiry_id": offer.inquiry_id, "status": offer.status, "value": offer.value},
+    )
+    db.delete(offer)
+    db.commit()
+    return deleted_offer

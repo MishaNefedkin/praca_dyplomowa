@@ -51,6 +51,11 @@ class UserCreate(BaseModel):
     role: UserRole = "sales"
 
 
+class UserUpdate(BaseModel):
+    password: str | None = Field(default=None, min_length=8, max_length=120)
+    role: UserRole | None = None
+
+
 class ClientBase(BaseModel):
     name: str | None = Field(default=None, max_length=160)
     email: EmailStr | None = None
@@ -189,6 +194,10 @@ class ConsentRead(BaseModel):
     client_id: int
     scope: str
     granted_at: datetime
+    active: bool
+
+
+class ConsentUpdate(BaseModel):
     active: bool
 
 

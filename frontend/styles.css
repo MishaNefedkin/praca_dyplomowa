@@ -316,6 +316,11 @@ textarea {
   letter-spacing: 0;
 }
 
+.admin-brand .brand-logo {
+  width: min(100%, 196px);
+  height: auto;
+}
+
 .sidebar nav {
   display: grid;
   gap: 6px;
@@ -537,6 +542,52 @@ th {
   max-width: 360px;
 }
 
+.filter-form {
+  margin-bottom: 0;
+}
+
+.filter-form input,
+.filter-form select {
+  max-width: 170px;
+}
+
+.edit-panel {
+  margin-bottom: 14px;
+}
+
+.edit-panel h3 {
+  margin-bottom: 0;
+}
+
+.edit-form {
+  margin-bottom: 0;
+}
+
+.edit-form input {
+  max-width: 190px;
+}
+
+.row-action-form {
+  flex-wrap: nowrap;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.row-action-form input,
+.row-action-form select {
+  max-width: 138px;
+  padding: 8px 10px;
+}
+
+.compact-table {
+  margin-top: 12px;
+  box-shadow: none;
+}
+
+.compact-table table {
+  min-width: 560px;
+}
+
 .status-select {
   min-width: 150px;
   max-width: 190px;
@@ -666,57 +717,10 @@ th {
   letter-spacing: 0;
 }
 
-.brand-mark {
-  position: relative;
-  width: 42px;
-  height: 36px;
-  border-bottom: 5px solid var(--gold);
-  border-left: 5px solid var(--gold);
-  transform: translateY(2px);
-}
-
-.brand-mark::before,
-.brand-mark::after {
-  position: absolute;
-  content: "";
-}
-
-.brand-mark::before {
-  width: 28px;
-  height: 28px;
-  border-top: 5px solid var(--gold);
-  border-left: 5px solid var(--gold);
-  transform: rotate(45deg);
-  top: -12px;
-  left: 5px;
-}
-
-.brand-mark::after {
-  width: 14px;
-  height: 18px;
-  border: 4px solid var(--gold);
-  border-bottom: 0;
-  right: 7px;
-  bottom: -5px;
-}
-
-.brand-copy {
-  display: grid;
-  gap: 1px;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.brand-copy strong {
-  font-size: 1.28rem;
-  letter-spacing: 1px;
-}
-
-.brand-copy small {
-  color: #7c838e;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 2.4px;
+.brand-logo {
+  display: block;
+  width: clamp(170px, 18vw, 220px);
+  height: auto;
 }
 
 .public-page nav {
@@ -1285,15 +1289,18 @@ th {
 }
 
 .public-page .footer-brand {
-  grid-template-columns: auto minmax(0, 1fr);
+  display: inline-flex;
   align-items: center;
   justify-self: start;
   gap: 12px;
+  border-radius: 2px;
+  background: #fff;
   color: #fff;
+  padding: 6px;
 }
 
-.public-page .footer-brand .brand-copy small {
-  color: #c5ccd7;
+.public-page .footer-brand .brand-logo {
+  width: 190px;
 }
 
 .public-page .footer-column {

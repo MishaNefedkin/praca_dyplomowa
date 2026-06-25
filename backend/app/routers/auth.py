@@ -25,8 +25,7 @@ def check_login_rate_limit(request: Request, login: str) -> None:
     now = monotonic()
     key = login_rate_limit_key(request, login)
     recent_failures = [
-        attempt for attempt in failed_login_attempts.get(key, [])
-        if now - attempt < LOGIN_RATE_LIMIT_WINDOW_SECONDS
+        attempt for attempt in failed_login_attempts.get(key, []) if now - attempt < LOGIN_RATE_LIMIT_WINDOW_SECONDS
     ]
     failed_login_attempts[key] = recent_failures
     if len(recent_failures) >= LOGIN_RATE_LIMIT_MAX_FAILURES:
@@ -91,3 +90,72 @@ def create_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.put("/users/{user_id}", response_model=schemas.UserRead)
+def update_user(
+    user_id: int,
+    payload: schemas.UserUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> models.User:
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    changes = payload.model_dump(exclude_unset=True, exclude_none=True)
+    if "role" in changes and changes["role"] != user.role and user.role == "admin" and changes["role"] != "admin":
+        admin_count = db.query(models.User).filter(models.User.role == "admin").count()
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Cannot remove the last admin")
+
+    if "password" in changes:
+        user.password_hash = hash_password(changes["password"])
+    if "role" in changes:
+        user.role = changes["role"]
+
+    record_audit_log(
+        db,
+        actor,
+        action="user.update",
+        entity_type="user",
+        entity_id=user.id,
+        details={"login": user.login, "fields": sorted(changes.keys())},
+    )
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.delete("/users/{user_id}", response_model=schemas.UserRead)
+def delete_user(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> schemas.UserRead:
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == actor.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    if user.role == "admin":
+        admin_count = db.query(models.User).filter(models.User.role == "admin").count()
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+
+    deleted_user = schemas.UserRead.model_validate(user)
+    record_audit_log(
+        db,
+        actor,
+        action="user.delete",
+        entity_type="user",
+        entity_id=user.id,
+        details={"login": user.login, "role": user.role},
+    )
+    db.query(models.AuditLog).filter(models.AuditLog.actor_user_id == user.id).update(
+        {"actor_user_id": None},
+        synchronize_session=False,
+    )
+    db.delete(user)
+    db.commit()
+    return deleted_user

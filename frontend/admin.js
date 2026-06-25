@@ -4,13 +4,14 @@ const PAGE_LIMIT = 25;
 const listState = {
   clients: { offset: 0, query: "" },
   inquiries: { offset: 0 },
-  offers: { offset: 0 },
-  activity: { offset: 0 },
-  audit: { offset: 0 },
+  offers: { offset: 0, status: "" },
+  activity: { offset: 0, event_type: "", client_id: "" },
+  audit: { offset: 0, action: "", entity_type: "", actor_login: "" },
   users: { offset: 0 },
 };
 let currentUser = null;
 let latestOffers = [];
+let latestClients = [];
 
 function token() {
   return localStorage.getItem(TOKEN_KEY);
@@ -55,7 +56,9 @@ async function api(path, options = {}) {
     apiError.status = response.status;
     throw apiError;
   }
-  return response.json();
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 async function optionalApi(path, fallback) {
@@ -65,6 +68,20 @@ async function optionalApi(path, fallback) {
     if (error.status === 403) return fallback;
     throw error;
   }
+}
+
+async function optionalApiAny(paths, fallback) {
+  let lastError = null;
+  for (const path of paths) {
+    try {
+      return await api(path);
+    } catch (error) {
+      lastError = error;
+      if (error.status !== 404 && error.status !== 405) throw error;
+    }
+  }
+  if (lastError && lastError.status === 403) return fallback;
+  return fallback;
 }
 
 function hasRole(...roles) {
@@ -152,6 +169,75 @@ function statusSelect(type, id, currentValue, values) {
   return `<select class="status-select" data-status-type="${escapeHtml(type)}" data-status-id="${escapeHtml(id)}">${options}</select>`;
 }
 
+function actionButton(label, data, danger = false) {
+  const attrs = Object.entries(data)
+    .map(([key, value]) => `data-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}="${escapeHtml(value)}"`)
+    .join(" ");
+  return `<button ${attrs} class="link-button${danger ? " danger" : ""}" type="button">${escapeHtml(label)}</button>`;
+}
+
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function renderConsents(clientId, consents) {
+  if (!consents.length) return "<p class='muted'>Brak zgód dla klienta.</p>";
+  const rows = consents
+    .map((consent) => {
+      const active = Boolean(consent.active);
+      return `
+        <tr>
+          <td>${escapeHtml(consent.id)}</td>
+          <td>${escapeHtml(consent.scope || "-")}</td>
+          <td>${escapeHtml(active ? "Aktywna" : "Nieaktywna")}</td>
+          <td>${escapeHtml(consent.granted_at ? new Date(consent.granted_at).toLocaleString() : "")}</td>
+          <td>
+            ${actionButton("Aktywuj", { consent: consent.id, active: "true", consentClient: clientId }, false)}
+            ${actionButton("Wyłącz", { consent: consent.id, active: "false", consentClient: clientId }, true)}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+  return `
+    <div class="table-shell compact-table">
+      <table>
+        <thead><tr><th>ID</th><th>Zakres</th><th>Status</th><th>Udzielono</th><th>Akcje</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function loadClientConsents(clientId) {
+  return optionalApiAny([`/consents/client/${clientId}`], []);
+}
+
+function renderClientEditPanel(client) {
+  document.getElementById("client-edit-panel").classList.remove("hidden");
+  document.getElementById("client-edit-panel").innerHTML = `
+    <div class="section-row">
+      <h3>Edytuj klienta #${escapeHtml(client.id)}</h3>
+      <button class="link-button" type="button" data-cancel-client-edit="true">Zamknij</button>
+    </div>
+    <form id="client-edit-form" class="inline-form edit-form" data-client-edit-id="${escapeHtml(client.id)}">
+      <input name="name" placeholder="Nazwa klienta" minlength="2" value="${escapeHtml(client.name)}" required />
+      <input name="email" type="email" placeholder="Email" value="${escapeHtml(client.email)}" required />
+      <input name="phone" placeholder="Telefon" value="${escapeHtml(client.phone)}" />
+      <input name="session_id" placeholder="Session ID" value="${escapeHtml(client.session_id)}" />
+      <button class="button primary" type="submit">Zapisz</button>
+    </form>
+  `;
+}
+
 function renderOffersTable(offers) {
   latestOffers = offers;
   document.getElementById("offers-table").innerHTML = table(
@@ -163,7 +249,13 @@ function renderOffersTable(offers) {
       { key: "status", label: "Status", render: (row) => formatStatus(row.status) },
       { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
     ],
-    hasRole("admin", "sales") ? (row) => statusSelect("offer", row.id, row.status, ["draft", "sent", "accepted", "rejected"]) : null,
+    hasRole("admin", "sales")
+      ? (row) => {
+          const actions = [statusSelect("offer", row.id, row.status, ["draft", "sent", "accepted", "rejected"])];
+          if (hasRole("admin")) actions.push(actionButton("Usuń", { delete: "offer", id: row.id }, true));
+          return actions.join(" ");
+        }
+      : null,
   );
   renderPager("offers-pager", "offers", offers);
 }
@@ -204,9 +296,9 @@ async function loadDashboard() {
       hasRole("admin", "manager") ? optionalApi("/analytics/alerts", []) : Promise.resolve([]),
       api(buildListPath("/clients", { limit: PAGE_LIMIT, offset: listState.clients.offset, q: listState.clients.query })),
       api(buildListPath("/inquiries", { limit: PAGE_LIMIT, offset: listState.inquiries.offset, status: document.getElementById("inquiry-filter").value })),
-      api(buildListPath("/offers", { limit: PAGE_LIMIT, offset: listState.offers.offset })),
-      hasRole("admin", "manager") ? optionalApi(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset }), []) : Promise.resolve([]),
-      hasRole("admin", "manager") ? optionalApi(buildListPath("/audit/logs", { limit: PAGE_LIMIT, offset: listState.audit.offset }), []) : Promise.resolve([]),
+      api(buildListPath("/offers", { limit: PAGE_LIMIT, offset: listState.offers.offset, status: listState.offers.status })),
+      hasRole("admin", "manager") ? optionalApi(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset, event_type: listState.activity.event_type, client_id: listState.activity.client_id }), []) : Promise.resolve([]),
+      hasRole("admin", "manager") ? optionalApi(buildListPath("/audit/logs", { limit: PAGE_LIMIT, offset: listState.audit.offset, action: listState.audit.action, entity_type: listState.audit.entity_type, actor_login: listState.audit.actor_login }), []) : Promise.resolve([]),
       hasRole("admin") ? optionalApi("/auth/users", []) : Promise.resolve([]),
     ]);
     status.textContent = "";
@@ -232,13 +324,24 @@ async function loadDashboard() {
     document.getElementById("alerts").innerHTML = alerts.map((alert) => `<p>${escapeHtml(alert.message)}</p>`).join("") || "<p class='muted'>Brak alertów.</p>";
   }
 
+  latestClients = clients;
+
   const clientActions = (row) => {
-    const actions = [`<button data-client="${row.id}" class="link-button">Timeline</button>`];
+    const actions = [
+      actionButton("Timeline", { timeline: row.id }),
+      actionButton("Zgody", { consents: row.id }),
+    ];
     if (hasRole("admin", "manager")) {
-      actions.push(`<button data-export="${row.id}" class="link-button">Eksport</button>`);
+      actions.push(actionButton("Eksport", { export: row.id }));
+    }
+    if (hasRole("admin", "sales")) {
+      actions.push(actionButton("Edytuj", { edit: "client", id: row.id }));
     }
     if (hasRole("admin")) {
-      actions.push(`<button data-anonymize="${row.id}" class="link-button danger">Anonimizuj</button>`);
+      actions.push(actionButton("Usuń", { delete: "client", id: row.id }, true));
+    }
+    if (hasRole("admin")) {
+      actions.push(actionButton("Anonimizuj", { anonymize: row.id }, true));
     }
     return actions.join(" ");
   };
@@ -250,6 +353,7 @@ async function loadDashboard() {
       { key: "name", label: "Nazwa" },
       { key: "email", label: "Email" },
       { key: "phone", label: "Telefon" },
+      { key: "session_id", label: "Sesja" },
       { key: "created_at", label: "Utworzono", render: (row) => new Date(row.created_at).toLocaleString() },
     ],
     clientActions,
@@ -265,19 +369,40 @@ async function loadDashboard() {
       { key: "message", label: "Wiadomość" },
       { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
     ],
-    hasRole("admin", "sales") ? (row) => statusSelect("inquiry", row.id, row.status, ["new", "in_progress", "offer_sent", "closed"]) : null,
+    hasRole("admin", "sales")
+      ? (row) => {
+          const actions = [statusSelect("inquiry", row.id, row.status, ["new", "in_progress", "offer_sent", "closed"])];
+          if (hasRole("admin")) actions.push(actionButton("Usuń", { delete: "inquiry", id: row.id }, true));
+          return actions.join(" ");
+        }
+      : null,
   );
   renderPager("inquiries-pager", "inquiries", inquiries);
 
   renderOffersTable(offers);
 
   if (hasRole("admin")) {
-    document.getElementById("users-table").innerHTML = table(users, [
-      { key: "id", label: "ID" },
-      { key: "login", label: "Login" },
-      { key: "role", label: "Rola" },
-      { key: "created_at", label: "Utworzono", render: (row) => new Date(row.created_at).toLocaleString() },
-    ]);
+    document.getElementById("users-table").innerHTML = table(
+      users,
+      [
+        { key: "id", label: "ID" },
+        { key: "login", label: "Login" },
+        { key: "role", label: "Rola" },
+        { key: "created_at", label: "Utworzono", render: (row) => new Date(row.created_at).toLocaleString() },
+      ],
+      (row) => `
+        <form class="inline-form row-action-form" data-user-update="${escapeHtml(row.id)}">
+          <select name="role">
+            <option value="sales" ${row.role === "sales" ? "selected" : ""}>Sales</option>
+            <option value="manager" ${row.role === "manager" ? "selected" : ""}>Manager</option>
+            <option value="admin" ${row.role === "admin" ? "selected" : ""}>Admin</option>
+          </select>
+          <input name="password" type="password" minlength="8" maxlength="120" placeholder="Nowe hasło" />
+          <button class="link-button" type="submit">Zapisz</button>
+          ${actionButton("Usuń", { delete: "user", id: row.id }, true)}
+        </form>
+      `,
+    );
   }
 
   if (hasRole("admin", "manager")) {
@@ -325,6 +450,54 @@ document.getElementById("logout").addEventListener("click", () => {
 
 document.getElementById("inquiry-filter").addEventListener("change", () => {
   listState.inquiries.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("offer-filter-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  listState.offers.status = document.getElementById("offer-status-filter").value;
+  listState.offers.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("offer-filter-reset").addEventListener("click", () => {
+  document.getElementById("offer-status-filter").value = "";
+  listState.offers.status = "";
+  listState.offers.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("activity-filter-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  listState.activity.event_type = document.getElementById("activity-event-type-filter").value.trim();
+  listState.activity.client_id = document.getElementById("activity-client-id-filter").value;
+  listState.activity.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("activity-filter-reset").addEventListener("click", () => {
+  document.getElementById("activity-filter-form").reset();
+  listState.activity.event_type = "";
+  listState.activity.client_id = "";
+  listState.activity.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("audit-filter-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  listState.audit.action = document.getElementById("audit-action-filter").value.trim();
+  listState.audit.entity_type = document.getElementById("audit-entity-type-filter").value.trim();
+  listState.audit.actor_login = document.getElementById("audit-actor-login-filter").value.trim();
+  listState.audit.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("audit-filter-reset").addEventListener("click", () => {
+  document.getElementById("audit-filter-form").reset();
+  listState.audit.action = "";
+  listState.audit.entity_type = "";
+  listState.audit.actor_login = "";
+  listState.audit.offset = 0;
   loadDashboard();
 });
 
@@ -431,6 +604,47 @@ document.getElementById("user-form").addEventListener("submit", async (event) =>
   }
 });
 
+document.addEventListener("submit", async (event) => {
+  const clientEditForm = event.target.closest("#client-edit-form");
+  const userUpdateForm = event.target.closest("[data-user-update]");
+
+  if (clientEditForm) {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(clientEditForm).entries());
+    try {
+      await api(`/clients/${clientEditForm.dataset.clientEditId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: data.name.trim(),
+          email: data.email.trim(),
+          phone: data.phone.trim() || null,
+          session_id: data.session_id.trim() || null,
+        }),
+      });
+      document.getElementById("client-edit-panel").classList.add("hidden");
+      setStatus("Klient został zaktualizowany.");
+      loadDashboard();
+    } catch (error) {
+      renderActionError(error);
+    }
+  }
+
+  if (userUpdateForm) {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(userUpdateForm).entries());
+    const body = { role: data.role };
+    if (data.password) body.password = data.password;
+    try {
+      await api(`/auth/users/${userUpdateForm.dataset.userUpdate}`, { method: "PUT", body: JSON.stringify(body) });
+      userUpdateForm.reset();
+      setStatus("Użytkownik został zaktualizowany.");
+      loadDashboard();
+    } catch (error) {
+      renderActionError(error);
+    }
+  }
+});
+
 document.addEventListener("change", async (event) => {
   const control = event.target.closest("[data-status-type]");
   if (!control) return;
@@ -447,8 +661,13 @@ document.addEventListener("change", async (event) => {
 });
 
 document.addEventListener("click", async (event) => {
-  const timelineButton = event.target.closest("[data-client]");
+  const timelineButton = event.target.closest("[data-timeline]");
+  const consentsButton = event.target.closest("[data-consents]");
+  const consentButton = event.target.closest("[data-consent]");
   const exportButton = event.target.closest("[data-export]");
+  const editButton = event.target.closest("[data-edit='client']");
+  const deleteButton = event.target.closest("[data-delete]");
+  const cancelClientEditButton = event.target.closest("[data-cancel-client-edit]");
   const anonymizeButton = event.target.closest("[data-anonymize]");
   const pageButton = event.target.closest("[data-page]");
   if (pageButton) {
@@ -459,10 +678,39 @@ document.addEventListener("click", async (event) => {
   }
   if (timelineButton) {
     try {
-      const rows = await api(`/clients/${timelineButton.dataset.client}/timeline`);
-      document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${escapeHtml(timelineButton.dataset.client)}</h3>` +
+      const rows = await api(`/clients/${timelineButton.dataset.timeline}/timeline`);
+      document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${escapeHtml(timelineButton.dataset.timeline)}</h3>` +
         rows.map((item) => `<p><strong>${escapeHtml(new Date(item.timestamp).toLocaleString())}</strong> ${escapeHtml(item.title)}</p>`).join("");
       setStatus("");
+    } catch (error) {
+      renderActionError(error);
+    }
+  }
+  if (consentsButton) {
+    try {
+      const consents = await loadClientConsents(consentsButton.dataset.consents);
+      document.getElementById("client-timeline").innerHTML = `
+        <h3>Zgody klienta #${escapeHtml(consentsButton.dataset.consents)}</h3>
+        ${renderConsents(consentsButton.dataset.consents, consents)}
+      `;
+      setStatus("");
+    } catch (error) {
+      renderActionError(error);
+    }
+  }
+  if (consentButton) {
+    try {
+      await api(`/consents/${consentButton.dataset.consent}`, {
+        method: "PUT",
+        body: JSON.stringify({ active: consentButton.dataset.active === "true" }),
+      });
+      const clientId = consentButton.dataset.consentClient;
+      const consents = await loadClientConsents(clientId);
+      document.getElementById("client-timeline").innerHTML = `
+        <h3>Zgody klienta #${escapeHtml(clientId)}</h3>
+        ${renderConsents(clientId, consents)}
+      `;
+      setStatus("Zgoda została zaktualizowana.");
     } catch (error) {
       renderActionError(error);
     }
@@ -470,8 +718,38 @@ document.addEventListener("click", async (event) => {
   if (exportButton) {
     try {
       const exported = await api(`/clients/${exportButton.dataset.export}/export`);
+      downloadJson(`client-${exportButton.dataset.export}-export.json`, exported);
       document.getElementById("client-timeline").innerHTML = `<h3>Eksport danych klienta #${escapeHtml(exportButton.dataset.export)}</h3><pre>${escapeHtml(JSON.stringify(exported, null, 2))}</pre>`;
-      setStatus("");
+      setStatus("Eksport JSON został pobrany.");
+      loadDashboard();
+    } catch (error) {
+      renderActionError(error);
+    }
+  }
+  if (editButton) {
+    const client = latestClients.find((item) => String(item.id) === String(editButton.dataset.id));
+    if (client) renderClientEditPanel(client);
+  }
+  if (cancelClientEditButton) {
+    document.getElementById("client-edit-panel").classList.add("hidden");
+  }
+  if (deleteButton) {
+    const labels = {
+      client: "klienta",
+      inquiry: "zapytanie",
+      offer: "ofertę",
+      user: "użytkownika",
+    };
+    if (!confirm(`Usunąć ${labels[deleteButton.dataset.delete] || "rekord"}?`)) return;
+    const endpoints = {
+      client: `/clients/${deleteButton.dataset.id}`,
+      inquiry: `/inquiries/${deleteButton.dataset.id}`,
+      offer: `/offers/${deleteButton.dataset.id}`,
+      user: `/auth/users/${deleteButton.dataset.id}`,
+    };
+    try {
+      await api(endpoints[deleteButton.dataset.delete], { method: "DELETE" });
+      setStatus("Rekord został usunięty.");
       loadDashboard();
     } catch (error) {
       renderActionError(error);

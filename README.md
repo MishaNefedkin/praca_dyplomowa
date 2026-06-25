@@ -55,8 +55,10 @@ Przed uruchomieniem poza środowiskiem demonstracyjnym zmień wartości `SECRET_
 - CRM klientów, zapytań ofertowych i ofert handlowych;
 - panel administracyjny z KPI, top stronami, alertami i logami aktywności;
 - JWT, role `admin`, `sales`, `manager`;
-- obsługa zgód RODO i anonimizacji danych osobowych.
-- paginacja list oraz wyszukiwanie klientów;
+- obsługa zgód RODO i anonimizacji danych osobowych;
+- CRUD klientów, zapytań i ofert w panelu administracyjnym;
+- zarządzanie użytkownikami panelu przez rolę `admin`;
+- paginacja list, wyszukiwanie klientów i filtrowanie zapytań, ofert, logów oraz zdarzeń;
 - audit log operacji administracyjnych, eksportów danych i zmian CRM;
 - testy automatyczne API.
 
@@ -68,9 +70,12 @@ Najważniejsze zmienne środowiskowe znajdują się w `.env.example`:
 - `SECRET_KEY` - klucz podpisywania tokenów JWT;
 - `ADMIN_LOGIN`, `ADMIN_PASSWORD` - konto administratora tworzone przy starcie;
 - `SEED_SAMPLE_DATA` - włącza lub wyłącza dane demonstracyjne;
-- `CORS_ALLOWED_ORIGINS` - dozwolone originy dla zapytań przeglądarki.
+- `CORS_ALLOWED_ORIGINS` - dozwolone originy dla zapytań przeglądarki;
 - `APP_ENV` - tryb aplikacji; w `production` wymagane są niedomyślne sekrety;
-- `AUTO_CREATE_TABLES` - automatyczne tworzenie tabel przy starcie, wygodne dla demo.
+- `RUN_MIGRATIONS` - uruchamia `alembic upgrade head` w entrypoincie kontenera przed startem API;
+- `AUTO_CREATE_TABLES` - automatyczne tworzenie tabel przy starcie, wygodne tylko dla lokalnego demo.
+
+W konfiguracji kontenerowej domyślnie używane są migracje (`RUN_MIGRATIONS=true`) i wyłączone automatyczne tworzenie tabel (`AUTO_CREATE_TABLES=false`). Dla środowiska produkcyjnego utrzymaj `AUTO_CREATE_TABLES=false`, ustaw `APP_ENV=production`, wyłącz dane demonstracyjne (`SEED_SAMPLE_DATA=false`) i użyj własnych sekretów.
 
 Role użytkowników:
 
@@ -117,8 +122,7 @@ Projekt zawiera migracje Alembic. Po ustawieniu `DATABASE_URL` można wykonać:
 alembic upgrade head
 ```
 
-Aplikacja nadal tworzy tabele automatycznie przy starcie, co ułatwia lokalne demo, ale migracje są zalecanym sposobem utrzymywania schematu bazy danych.
-W środowisku produkcyjnym zalecane jest ustawienie `AUTO_CREATE_TABLES=false` i uruchamianie migracji przed startem aplikacji.
+Obraz Docker korzysta ze skryptu `scripts/entrypoint.sh`. Jeśli `RUN_MIGRATIONS=true`, entrypoint uruchamia `alembic upgrade head` przed komendą startową kontenera. Migracje są zalecanym sposobem utrzymywania schematu bazy danych. `AUTO_CREATE_TABLES=true` zostaje jako awaryjne ułatwienie dla lokalnych demonstracji bez migracji.
 
 ## Audit log
 
@@ -134,4 +138,10 @@ Listy administracyjne przyjmują parametry:
 - `limit` - liczba rekordów, domyślnie `100`, maksymalnie `300`;
 - `offset` - przesunięcie wyników;
 - `q` - wyszukiwanie klientów po nazwie, emailu lub telefonie dla endpointu `/clients`;
-- `status` - filtrowanie zapytań i ofert po statusie.
+- `status` - filtrowanie zapytań i ofert po statusie;
+- `event_type`, `client_id` - filtrowanie logów aktywności `/tracking/logs`;
+- `action`, `entity_type`, `actor_login` - filtrowanie dziennika `/audit/logs`.
+
+## Zakres MVP
+
+MVP obejmuje formularz kontaktowy, tracking, CRM, role użytkowników, zgody RODO, anonimizację, eksport danych JSON i audit log. Automatyczna wysyłka emaili, generowanie PDF ofert i integracje z zewnętrznymi systemami pozostają zakresem przyszłych rozszerzeń.
