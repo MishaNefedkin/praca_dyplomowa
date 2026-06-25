@@ -10,6 +10,7 @@ InquiryStatus = Literal["new", "in_progress", "offer_sent", "closed"]
 OfferStatus = Literal["draft", "sent", "accepted", "rejected"]
 UserRole = Literal["admin", "sales", "manager"]
 PHONE_PATTERN = re.compile(r"^[0-9+()\s-]+$")
+MIN_PHONE_DIGITS = 6
 
 
 def validate_phone_number(phone: str | None) -> str | None:
@@ -20,6 +21,8 @@ def validate_phone_number(phone: str | None) -> str | None:
         return None
     if not PHONE_PATTERN.fullmatch(normalized):
         raise ValueError("Phone number can contain only digits, spaces, +, -, and parentheses")
+    if sum(character.isdigit() for character in normalized) < MIN_PHONE_DIGITS:
+        raise ValueError("Phone number must contain at least 6 digits")
     return normalized
 
 

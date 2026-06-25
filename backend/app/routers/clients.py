@@ -75,6 +75,10 @@ def update_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     changes = payload.model_dump(exclude_unset=True)
+    if "email" in changes and changes["email"] is not None:
+        existing_client = db.query(models.Client).filter(models.Client.email == changes["email"]).first()
+        if existing_client and existing_client.id != client.id:
+            raise HTTPException(status_code=409, detail="Client with this email already exists")
     for key, value in changes.items():
         setattr(client, key, value)
     record_audit_log(
@@ -103,7 +107,12 @@ def anonymize_client(
     client.name = "Anonymized client"
     client.email = None
     client.phone = None
+    client.session_id = None
     db.query(models.Consent).filter(models.Consent.client_id == client.id).update({"active": False})
+    db.query(models.ActivityLog).filter(models.ActivityLog.client_id == client.id).update(
+        {"client_id": None},
+        synchronize_session=False,
+    )
     record_audit_log(
         db,
         actor,

@@ -196,7 +196,7 @@
             <h2>Formularz kontaktowy</h2>
             <label><span>Imię i nazwisko</span><input name="name" placeholder="Imię i nazwisko" required minlength="2" /></label>
             <label><span>Adres e-mail</span><input name="email" type="email" placeholder="Adres e-mail" required /></label>
-            <label><span>Telefon</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Telefon" pattern="^[0-9+()\\s-]*$" maxlength="60" /></label>
+            <label><span>Telefon</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Telefon" pattern="(?=(?:.*\d){6,})[0-9+()\s-]*" maxlength="60" title="Telefon może zawierać tylko cyfry, spacje, +, -, nawiasy i co najmniej 6 cyfr." /></label>
             <label><span>Wiadomość</span><textarea name="message" placeholder="Wiadomość" required minlength="5"></textarea></label>
             <label class="check">
               <input name="consent" type="checkbox" required />

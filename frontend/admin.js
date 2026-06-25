@@ -8,6 +8,7 @@ const listState = {
   activity: { offset: 0 },
   audit: { offset: 0 },
 };
+let currentUser = null;
 
 function token() {
   return localStorage.getItem(TOKEN_KEY);
@@ -33,9 +34,52 @@ async function api(path, options = {}) {
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(error.detail || "Request failed");
+    const apiError = new Error(error.detail || "Request failed");
+    apiError.status = response.status;
+    throw apiError;
   }
   return response.json();
+}
+
+async function optionalApi(path, fallback) {
+  try {
+    return await api(path);
+  } catch (error) {
+    if (error.status === 403) return fallback;
+    throw error;
+  }
+}
+
+function hasRole(...roles) {
+  return currentUser && roles.includes(currentUser.role);
+}
+
+function setElementHidden(id, hidden) {
+  document.getElementById(id).classList.toggle("hidden", hidden);
+}
+
+function setNavLinkHidden(hash, hidden) {
+  const link = document.querySelector(`.sidebar a[href="${hash}"]`);
+  if (link) link.classList.toggle("hidden", hidden);
+}
+
+function applyRoleUi() {
+  const canReadAnalytics = hasRole("admin", "manager");
+  const canReadProtectedLogs = hasRole("admin", "manager");
+  const canWriteOffers = hasRole("admin", "sales");
+
+  setElementHidden("dashboard", !canReadAnalytics);
+  setElementHidden("activity", !canReadProtectedLogs);
+  setElementHidden("audit", !canReadProtectedLogs);
+  setElementHidden("offer-form", !canWriteOffers);
+  setNavLinkHidden("#dashboard", !canReadAnalytics);
+  setNavLinkHidden("#activity", !canReadProtectedLogs);
+  setNavLinkHidden("#audit", !canReadProtectedLogs);
+}
+
+async function loadCurrentUser() {
+  currentUser = await api("/auth/me");
+  applyRoleUi();
 }
 
 function table(rows, columns, actions = null) {
@@ -78,10 +122,19 @@ function renderActionError(error) {
   setStatus(`Operacja nie powiodła się: ${error.message}`);
 }
 
-function showApp(isLoggedIn) {
+async function showApp(isLoggedIn) {
   document.getElementById("login-panel").classList.toggle("hidden", isLoggedIn);
   document.getElementById("admin-content").classList.toggle("hidden", !isLoggedIn);
-  if (isLoggedIn) loadDashboard();
+  if (isLoggedIn) {
+    try {
+      await loadCurrentUser();
+      loadDashboard();
+    } catch (error) {
+      localStorage.removeItem(TOKEN_KEY);
+      currentUser = null;
+      showApp(false);
+    }
+  }
 }
 
 async function loadDashboard() {
@@ -99,14 +152,14 @@ async function loadDashboard() {
 
   try {
     [kpi, topPages, alerts, clients, inquiries, offers, logs, auditLogs] = await Promise.all([
-      api("/analytics/kpi"),
-      api("/analytics/top-pages"),
-      api("/analytics/alerts"),
+      hasRole("admin", "manager") ? optionalApi("/analytics/kpi", null) : Promise.resolve(null),
+      hasRole("admin", "manager") ? optionalApi("/analytics/top-pages", []) : Promise.resolve([]),
+      hasRole("admin", "manager") ? optionalApi("/analytics/alerts", []) : Promise.resolve([]),
       api(buildListPath("/clients", { limit: PAGE_LIMIT, offset: listState.clients.offset, q: listState.clients.query })),
       api(buildListPath("/inquiries", { limit: PAGE_LIMIT, offset: listState.inquiries.offset, status: document.getElementById("inquiry-filter").value })),
       api(buildListPath("/offers", { limit: PAGE_LIMIT, offset: listState.offers.offset })),
-      api(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset })),
-      api(buildListPath("/audit/logs", { limit: PAGE_LIMIT, offset: listState.audit.offset })),
+      hasRole("admin", "manager") ? optionalApi(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset }), []) : Promise.resolve([]),
+      hasRole("admin", "manager") ? optionalApi(buildListPath("/audit/logs", { limit: PAGE_LIMIT, offset: listState.audit.offset }), []) : Promise.resolve([]),
     ]);
     status.textContent = "";
   } catch (error) {
@@ -118,16 +171,18 @@ async function loadDashboard() {
     return;
   }
 
-  document.getElementById("kpi-grid").innerHTML = [
-    ["Klienci", kpi.clients_count],
-    ["Nowe zapytania", kpi.new_inquiries_count],
-    ["Wysłane oferty", kpi.sent_offers_count],
-    ["Konwersja", `${kpi.inquiry_to_offer_conversion_rate}%`],
-    ["Aktywność 24h", kpi.activities_last_24h],
-  ].map(([label, value]) => `<article class="metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
+  if (kpi) {
+    document.getElementById("kpi-grid").innerHTML = [
+      ["Klienci", kpi.clients_count],
+      ["Nowe zapytania", kpi.new_inquiries_count],
+      ["Wysłane oferty", kpi.sent_offers_count],
+      ["Konwersja", `${kpi.inquiry_to_offer_conversion_rate}%`],
+      ["Aktywność 24h", kpi.activities_last_24h],
+    ].map(([label, value]) => `<article class="metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
 
-  document.getElementById("top-pages").innerHTML = topPages.map((page) => `<p><strong>${escapeHtml(page.visits)}</strong> ${escapeHtml(page.page_url)}</p>`).join("") || "<p class='muted'>Brak wizyt.</p>";
-  document.getElementById("alerts").innerHTML = alerts.map((alert) => `<p>${escapeHtml(alert.message)}</p>`).join("") || "<p class='muted'>Brak alertów.</p>";
+    document.getElementById("top-pages").innerHTML = topPages.map((page) => `<p><strong>${escapeHtml(page.visits)}</strong> ${escapeHtml(page.page_url)}</p>`).join("") || "<p class='muted'>Brak wizyt.</p>";
+    document.getElementById("alerts").innerHTML = alerts.map((alert) => `<p>${escapeHtml(alert.message)}</p>`).join("") || "<p class='muted'>Brak alertów.</p>";
+  }
 
   document.getElementById("clients-table").innerHTML = table(
     clients,
@@ -160,26 +215,28 @@ async function loadDashboard() {
   ]);
   renderPager("offers-pager", "offers", offers);
 
-  document.getElementById("activity-table").innerHTML = table(logs, [
-    { key: "id", label: "ID" },
-    { key: "client_id", label: "Klient" },
-    { key: "session_id", label: "Sesja" },
-    { key: "page_url", label: "Strona" },
-    { key: "event_type", label: "Typ" },
-    { key: "time_on_page", label: "Czas" },
-    { key: "logged_at", label: "Data", render: (row) => new Date(row.logged_at).toLocaleString() },
-  ]);
-  renderPager("activity-pager", "activity", logs);
+  if (hasRole("admin", "manager")) {
+    document.getElementById("activity-table").innerHTML = table(logs, [
+      { key: "id", label: "ID" },
+      { key: "client_id", label: "Klient" },
+      { key: "session_id", label: "Sesja" },
+      { key: "page_url", label: "Strona" },
+      { key: "event_type", label: "Typ" },
+      { key: "time_on_page", label: "Czas" },
+      { key: "logged_at", label: "Data", render: (row) => new Date(row.logged_at).toLocaleString() },
+    ]);
+    renderPager("activity-pager", "activity", logs);
 
-  document.getElementById("audit-table").innerHTML = table(auditLogs, [
-    { key: "id", label: "ID" },
-    { key: "actor_login", label: "Użytkownik" },
-    { key: "action", label: "Akcja" },
-    { key: "entity_type", label: "Obiekt" },
-    { key: "entity_id", label: "ID obiektu" },
-    { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
-  ]);
-  renderPager("audit-pager", "audit", auditLogs);
+    document.getElementById("audit-table").innerHTML = table(auditLogs, [
+      { key: "id", label: "ID" },
+      { key: "actor_login", label: "Użytkownik" },
+      { key: "action", label: "Akcja" },
+      { key: "entity_type", label: "Obiekt" },
+      { key: "entity_id", label: "ID obiektu" },
+      { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
+    ]);
+    renderPager("audit-pager", "audit", auditLogs);
+  }
 }
 
 document.getElementById("login-form").addEventListener("submit", async (event) => {
@@ -190,7 +247,7 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
     const result = await api("/auth/login", { method: "POST", body: JSON.stringify(data) });
     localStorage.setItem(TOKEN_KEY, result.access_token);
     status.textContent = "";
-    showApp(true);
+    await showApp(true);
   } catch (error) {
     status.textContent = error.message;
   }
@@ -208,7 +265,12 @@ document.getElementById("inquiry-filter").addEventListener("change", () => {
 
 document.getElementById("client-search-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  listState.clients.query = document.getElementById("client-search").value.trim();
+  const query = document.getElementById("client-search").value.trim();
+  if (query.length === 1) {
+    setStatus("Wpisz co najmniej 2 znaki, aby wyszukać klienta.");
+    return;
+  }
+  listState.clients.query = query;
   listState.clients.offset = 0;
   loadDashboard();
 });

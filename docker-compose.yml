@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-construction_crm}
       POSTGRES_USER: ${POSTGRES_USER:-construction_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-construction_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,13 +16,13 @@ services:
   api:
     build: .
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://construction_user:construction_password@db:5432/construction_crm}
-      SECRET_KEY: ${SECRET_KEY:-change-this-secret-before-production}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
       APP_ENV: ${APP_ENV:-development}
       AUTO_CREATE_TABLES: ${AUTO_CREATE_TABLES:-true}
       ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
       SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-true}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000}
     ports:

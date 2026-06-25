@@ -2,6 +2,8 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
+
 os.environ["DATABASE_URL"] = f"sqlite:///{Path(tempfile.gettempdir()) / f'construction_crm_test_{os.getpid()}.db'}"
 os.environ["ADMIN_LOGIN"] = "admin"
 os.environ["ADMIN_PASSWORD"] = "admin12345"
@@ -13,14 +15,19 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from backend.app.database import Base, engine  # noqa: E402
 from backend.app.main import app, validate_runtime_settings  # noqa: E402
+from backend.app.routers.auth import failed_login_attempts  # noqa: E402
+from backend.app.routers.tracking import rate_limit_hits  # noqa: E402
 
 
-def setup_module() -> None:
+@pytest.fixture(autouse=True)
+def clean_test_state():
     Base.metadata.drop_all(bind=engine)
-
-
-def teardown_module() -> None:
+    failed_login_attempts.clear()
+    rate_limit_hits.clear()
+    yield
     Base.metadata.drop_all(bind=engine)
+    failed_login_attempts.clear()
+    rate_limit_hits.clear()
 
 
 def auth_headers(client: TestClient) -> dict[str, str]:
@@ -109,6 +116,64 @@ def test_public_inquiry_links_existing_tracking_session_to_client() -> None:
     assert logs_response.json()[0]["client_id"] == client_id
 
 
+def test_public_inquiry_does_not_reassign_existing_client_session() -> None:
+    original_session_id = "owned-session-001"
+    attacker_session_id = "attacker-session-001"
+    with TestClient(app) as client:
+        original_inquiry = client.post(
+            "/inquiries",
+            json={
+                "name": "Original Client",
+                "email": "session.owner@example.com",
+                "phone": "+48 600 100 100",
+                "message": "Please prepare the first offer.",
+                "session_id": original_session_id,
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+        assert original_inquiry.status_code == 200
+        client_id = original_inquiry.json()["client_id"]
+
+        attacker_log = client.post(
+            "/tracking/event",
+            json={
+                "session_id": attacker_session_id,
+                "page_url": "/",
+                "event_type": "page_view",
+                "event_data": {"source": "unknown"},
+                "referrer": None,
+                "time_on_page": 1,
+            },
+        )
+        assert attacker_log.status_code == 200
+
+        second_inquiry = client.post(
+            "/inquiries",
+            json={
+                "name": "Changed Name",
+                "email": "session.owner@example.com",
+                "phone": "+48 699 999 999",
+                "message": "Second inquiry with known email.",
+                "session_id": attacker_session_id,
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+        assert second_inquiry.status_code == 200
+        headers = auth_headers(client)
+        client_response = client.get(f"/clients/{client_id}", headers=headers)
+        logs_response = client.get("/tracking/logs", headers=headers)
+
+    assert client_response.status_code == 200
+    stored_client = client_response.json()
+    assert stored_client["session_id"] == original_session_id
+    assert stored_client["name"] == "Original Client"
+    assert stored_client["phone"] == "+48 600 100 100"
+    attacker_logs = [log for log in logs_response.json() if log["session_id"] == attacker_session_id]
+    assert attacker_logs[0]["client_id"] is None
+
+
 def test_public_inquiry_rejects_phone_letters() -> None:
     with TestClient(app) as client:
         response = client.post(
@@ -119,6 +184,24 @@ def test_public_inquiry_rejects_phone_letters() -> None:
                 "phone": "aaaooa",
                 "message": "Please call me about construction.",
                 "session_id": "letter-phone-session",
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+
+    assert response.status_code == 422
+
+
+def test_public_inquiry_rejects_phone_without_enough_digits() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/inquiries",
+            json={
+                "name": "Short Phone",
+                "email": "short.phone@example.com",
+                "phone": "+()--",
+                "message": "Please call me about construction.",
+                "session_id": "short-phone-session",
                 "consent_granted": True,
                 "consent_scope": "contact_and_analytics",
             },
@@ -254,6 +337,19 @@ def test_sales_role_can_write_clients_but_cannot_access_analytics() -> None:
 
 def test_admin_anonymize_removes_personal_data_and_deactivates_consents() -> None:
     with TestClient(app) as client:
+        tracking_response = client.post(
+            "/tracking/event",
+            json={
+                "session_id": "privacy-session-001",
+                "page_url": "/",
+                "event_type": "page_view",
+                "event_data": {"source": "privacy-test"},
+                "referrer": None,
+                "time_on_page": 4,
+            },
+        )
+        assert tracking_response.status_code == 200
+
         inquiry_response = client.post(
             "/inquiries",
             json={
@@ -272,14 +368,43 @@ def test_admin_anonymize_removes_personal_data_and_deactivates_consents() -> Non
         headers = auth_headers(client)
         anonymize_response = client.delete(f"/clients/{client_id}/anonymize", headers=headers)
         consents_response = client.get(f"/consents/client/{client_id}", headers=headers)
+        exported_response = client.get(f"/clients/{client_id}/export", headers=headers)
 
     assert anonymize_response.status_code == 200
     anonymized = anonymize_response.json()
     assert anonymized["name"] == "Anonymized client"
     assert anonymized["email"] is None
     assert anonymized["phone"] is None
+    assert anonymized["session_id"] is None
     assert consents_response.status_code == 200
     assert all(consent["active"] is False for consent in consents_response.json())
+    assert exported_response.status_code == 200
+    assert exported_response.json()["activity_logs"] == []
+
+
+def test_client_update_rejects_duplicate_email() -> None:
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        first_response = client.post(
+            "/clients",
+            headers=headers,
+            json={"name": "First Duplicate", "email": "first.duplicate@example.com"},
+        )
+        second_response = client.post(
+            "/clients",
+            headers=headers,
+            json={"name": "Second Duplicate", "email": "second.duplicate@example.com"},
+        )
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+
+        update_response = client.put(
+            f"/clients/{second_response.json()['id']}",
+            headers=headers,
+            json={"email": "first.duplicate@example.com"},
+        )
+
+    assert update_response.status_code == 409
 
 
 def test_admin_can_export_client_personal_data() -> None:

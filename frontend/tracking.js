@@ -44,6 +44,9 @@ async function track(eventType, eventData = {}, timeOnPage = null) {
 
 const pageStartedAt = Date.now();
 track("page_view", { title: document.title });
+const PHONE_ALLOWED_PATTERN = /^[0-9+()\s-]*$/;
+const PHONE_DISALLOWED_PATTERN = /[^0-9+()\s-]/g;
+const MIN_PHONE_DIGITS = 6;
 
 window.addEventListener("beforeunload", () => {
   const timeOnPage = Math.round((Date.now() - pageStartedAt) / 1000);
@@ -72,8 +75,20 @@ document.querySelectorAll("input, textarea").forEach((field) => {
 });
 
 document.querySelectorAll('input[name="phone"]').forEach((field) => {
+  field.addEventListener("beforeinput", (event) => {
+    if (event.data && !PHONE_ALLOWED_PATTERN.test(event.data)) {
+      event.preventDefault();
+    }
+  });
+  field.addEventListener("paste", (event) => {
+    const pasted = event.clipboardData?.getData("text") || "";
+    if (pasted && !PHONE_ALLOWED_PATTERN.test(pasted)) {
+      event.preventDefault();
+      document.execCommand("insertText", false, pasted.replace(PHONE_DISALLOWED_PATTERN, ""));
+    }
+  });
   field.addEventListener("input", () => {
-    field.value = field.value.replace(/[^0-9+()\s-]/g, "");
+    field.value = field.value.replace(PHONE_DISALLOWED_PATTERN, "");
   });
 });
 
@@ -82,6 +97,11 @@ document.getElementById("contact-form")?.addEventListener("submit", async (event
   const form = event.currentTarget;
   const status = document.getElementById("contact-status");
   const data = Object.fromEntries(new FormData(form).entries());
+  const phoneDigits = String(data.phone || "").replace(/\D/g, "").length;
+  if (data.phone && phoneDigits < MIN_PHONE_DIGITS) {
+    status.textContent = "Numer telefonu musi zawierać co najmniej 6 cyfr.";
+    return;
+  }
   status.textContent = "Wysyłanie...";
 
   try {
