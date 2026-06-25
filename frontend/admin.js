@@ -10,6 +10,7 @@ const listState = {
   users: { offset: 0 },
 };
 let currentUser = null;
+let latestOffers = [];
 
 function token() {
   return localStorage.getItem(TOKEN_KEY);
@@ -150,6 +151,22 @@ function statusSelect(type, id, currentValue, values) {
   return `<select class="status-select" data-status-type="${escapeHtml(type)}" data-status-id="${escapeHtml(id)}">${options}</select>`;
 }
 
+function renderOffersTable(offers) {
+  latestOffers = offers;
+  document.getElementById("offers-table").innerHTML = table(
+    offers,
+    [
+      { key: "id", label: "ID" },
+      { key: "inquiry_id", label: "Zapytanie" },
+      { key: "value", label: "Wartość" },
+      { key: "status", label: "Status", render: (row) => formatStatus(row.status) },
+      { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
+    ],
+    hasRole("admin", "sales") ? (row) => statusSelect("offer", row.id, row.status, ["draft", "sent", "accepted", "rejected"]) : null,
+  );
+  renderPager("offers-pager", "offers", offers);
+}
+
 async function showApp(isLoggedIn) {
   document.getElementById("login-panel").classList.toggle("hidden", isLoggedIn);
   document.getElementById("admin-content").classList.toggle("hidden", !isLoggedIn);
@@ -251,18 +268,7 @@ async function loadDashboard() {
   );
   renderPager("inquiries-pager", "inquiries", inquiries);
 
-  document.getElementById("offers-table").innerHTML = table(
-    offers,
-    [
-      { key: "id", label: "ID" },
-      { key: "inquiry_id", label: "Zapytanie" },
-      { key: "value", label: "Wartość" },
-      { key: "status", label: "Status", render: (row) => formatStatus(row.status) },
-      { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
-    ],
-    hasRole("admin", "sales") ? (row) => statusSelect("offer", row.id, row.status, ["draft", "sent", "accepted", "rejected"]) : null,
-  );
-  renderPager("offers-pager", "offers", offers);
+  renderOffersTable(offers);
 
   if (hasRole("admin")) {
     document.getElementById("users-table").innerHTML = table(users, [
@@ -386,13 +392,17 @@ document.getElementById("offer-form").addEventListener("submit", async (event) =
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
   try {
-    await api("/offers", {
+    const createdOffer = await api("/offers", {
       method: "POST",
       body: JSON.stringify({ inquiry_id: Number(data.inquiry_id), value: Number(data.value), status: data.status }),
     });
     event.currentTarget.reset();
-    setStatus("");
-    loadDashboard();
+    listState.offers.offset = 0;
+    await loadDashboard();
+    if (!latestOffers.some((offer) => offer.id === createdOffer.id)) {
+      renderOffersTable([createdOffer, ...latestOffers].slice(0, PAGE_LIMIT));
+    }
+    setStatus("Oferta została dodana.");
   } catch (error) {
     renderActionError(error);
   }
