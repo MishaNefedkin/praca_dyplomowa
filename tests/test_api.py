@@ -66,6 +66,17 @@ def test_security_headers_are_set() -> None:
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 
 
+def test_admin_assets_are_not_cached() -> None:
+    with TestClient(app) as client:
+        admin_response = client.get("/admin")
+        script_response = client.get("/static/admin.js")
+
+    assert admin_response.status_code == 200
+    assert admin_response.headers["cache-control"] == "no-store"
+    assert script_response.status_code == 200
+    assert script_response.headers["cache-control"] == "no-store"
+
+
 def test_failed_login_attempts_are_rate_limited() -> None:
     with TestClient(app) as client:
         for _ in range(5):

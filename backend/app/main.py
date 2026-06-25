@@ -69,6 +69,8 @@ async def security_headers(request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if request.url.path == "/admin" or request.url.path == "/static/admin.js":
+        response.headers["Cache-Control"] = "no-store"
     return response
 
 app.include_router(auth.router)

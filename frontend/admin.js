@@ -42,6 +42,7 @@ function formatStatus(value) {
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
