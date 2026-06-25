@@ -282,23 +282,65 @@ textarea {
 }
 
 .admin-body {
+  --ink: #20232b;
+  --muted: #5f6673;
+  --gold: #d09100;
+  --gold-dark: #b37700;
+  --gold-soft: #f4c04d;
+  --line: #e4e7ec;
+  --soft: #f8fafc;
+  --accent: #f97316;
+  --accent-strong: #d96b00;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
+  background: #f6f3ee;
+  color: var(--ink);
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid rgba(16, 24, 40, 0.08);
   background: #fff;
-  padding: 24px;
+  padding: 24px 22px;
+  box-shadow: 8px 0 24px rgba(16, 24, 40, 0.04);
+}
+
+.admin-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #141820;
+  letter-spacing: 0;
 }
 
 .sidebar nav {
   display: grid;
-  margin-top: 28px;
+  gap: 6px;
+  margin-top: 34px;
+  color: #252b35;
+}
+
+.sidebar nav a {
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: #343b47;
+  font-weight: 800;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 100ms ease;
+}
+
+.sidebar nav a:hover {
+  background: #fff3dc;
+  color: var(--gold-dark);
+}
+
+.sidebar nav a:active {
+  transform: translateY(1px);
 }
 
 .admin-main {
@@ -307,7 +349,11 @@ textarea {
 
 .login-panel {
   max-width: 480px;
-  padding: 56px;
+  padding: 56px clamp(22px, 5vw, 64px);
+}
+
+.login-panel h1 {
+  color: #20232b;
 }
 
 .compact {
@@ -322,9 +368,73 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28px clamp(20px, 4vw, 48px);
-  border-bottom: 1px solid var(--line);
+  gap: 20px;
+  padding: 30px clamp(22px, 5vw, 56px);
+  border-bottom: 1px solid rgba(16, 24, 40, 0.08);
   background: #fff;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.04);
+}
+
+.topbar h1 {
+  margin-bottom: 6px;
+  color: #20232b;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+}
+
+.admin-body .eyebrow {
+  display: block;
+  width: fit-content;
+  margin: 0 0 10px;
+  color: var(--gold-dark);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.admin-body .button {
+  min-height: 42px;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.admin-body .primary {
+  border: 0;
+  background: #f97316;
+  color: #fff;
+  box-shadow: rgba(0, 0, 0, 0.05) 0 0 8px;
+}
+
+.admin-body .primary:hover {
+  background: #fff;
+  color: #d96b00;
+  box-shadow: rgb(249 115 22) 0 7px 29px 0;
+}
+
+.admin-body .secondary {
+  border-color: #e3d8c7;
+  background: #fff;
+  color: #343b47;
+}
+
+.admin-body .secondary:hover {
+  border-color: #f4c04d;
+  color: var(--gold-dark);
+}
+
+.admin-body .section {
+  margin: 0;
+  padding: 30px clamp(22px, 5vw, 56px);
+  border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+  background: transparent;
+}
+
+.admin-body .section h2 {
+  margin-bottom: 0;
+  color: #20232b;
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
 }
 
 .metric span {
@@ -335,7 +445,8 @@ textarea {
 .metric strong {
   display: block;
   margin-top: 8px;
-  font-size: 1.8rem;
+  color: #20232b;
+  font-size: 1.75rem;
 }
 
 .split {
@@ -347,9 +458,10 @@ textarea {
 
 .table-shell {
   overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid #e3d8c7;
+  border-radius: 6px;
   background: #fff;
+  box-shadow: 0 12px 26px rgba(16, 24, 40, 0.06);
 }
 
 table {
@@ -360,22 +472,23 @@ table {
 
 th,
 td {
-  padding: 12px 14px;
+  padding: 13px 14px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
 }
 
 th {
-  background: #f9fafb;
+  background: #fbf7ef;
   color: var(--muted);
   font-size: 0.83rem;
+  text-transform: uppercase;
 }
 
 .link-button {
   border: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--gold-dark);
   cursor: pointer;
   font-weight: 800;
 }
@@ -409,10 +522,11 @@ th {
 }
 
 .admin-form {
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e3d8c7;
+  border-radius: 6px;
   background: #fff;
+  box-shadow: 0 10px 22px rgba(16, 24, 40, 0.05);
 }
 
 .admin-form input[name="message"] {
@@ -438,6 +552,29 @@ th {
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.admin-body .card,
+.admin-body .form-card,
+.admin-body .metric {
+  border-color: #e3d8c7;
+  border-radius: 6px;
+  box-shadow: 0 10px 22px rgba(16, 24, 40, 0.05);
+}
+
+.admin-body input,
+.admin-body textarea,
+.admin-body select {
+  border-color: #d9dfeb;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.admin-body input:focus,
+.admin-body textarea:focus,
+.admin-body select:focus {
+  border-color: var(--gold);
+  outline: 3px solid rgba(245, 190, 52, 0.24);
 }
 
 @media (max-width: 900px) {
@@ -681,7 +818,7 @@ th {
   border-bottom: 0;
   background:
     linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, 0.94) 28%, rgba(255, 255, 255, 0.54) 45%, rgba(255, 255, 255, 0.02) 67%),
-    url("/static/assets/images/hero.jpg") center right/cover;
+    url("assets/images/hero.jpg") center right/cover;
 }
 
 .public-page .hero-copy {
@@ -724,14 +861,14 @@ th {
 }
 
 .public-page .section {
-  padding: clamp(52px, 6vw, 78px) clamp(22px, 5vw, 64px);
+  padding: clamp(44px, 5vw, 66px) clamp(22px, 5vw, 64px);
   border: 0;
   background: #fff;
 }
 
 .public-page .section h2 {
   max-width: 1150px;
-  margin: 0 auto 28px;
+  margin: 0 auto clamp(20px, 2vw, 28px);
   color: #20232b;
   font-size: clamp(1.45rem, 2.5vw, 1.72rem);
 }
@@ -746,6 +883,10 @@ th {
 .public-page .portfolio-section > .portfolio-grid,
 .public-page .references-section > .grid {
   max-width: 1150px;
+}
+
+.public-page .services-section {
+  padding-bottom: clamp(50px, 5vw, 70px);
 }
 
 .public-page .service-card {
@@ -767,22 +908,22 @@ th {
 }
 
 .service-media.homes {
-  background-image: url("/static/assets/images/service-homes.jpg");
+  background-image: url("assets/images/service-homes.jpg");
   background-position: center 48%;
 }
 
 .service-media.multifamily {
-  background-image: url("/static/assets/images/service-multifamily.jpg");
+  background-image: url("assets/images/service-multifamily.jpg");
   background-position: center 42%;
 }
 
 .service-media.interiors {
-  background-image: url("/static/assets/images/service-renovation.jpg");
+  background-image: url("assets/images/service-renovation.jpg");
   background-position: center 56%;
 }
 
 .service-media.commercial {
-  background-image: url("/static/assets/images/service-commercial.jpg");
+  background-image: url("assets/images/service-commercial.jpg");
   background-position: center 40%;
 }
 
@@ -834,7 +975,8 @@ th {
 }
 
 .public-page .portfolio-section {
-  padding-top: clamp(58px, 6vw, 82px);
+  padding-top: clamp(48px, 5vw, 68px);
+  padding-bottom: clamp(50px, 5vw, 72px);
 }
 
 .public-page .portfolio-grid {
@@ -872,22 +1014,22 @@ th {
 }
 
 .portfolio-one {
-  background-image: url("/static/assets/images/project-panorama.jpg");
+  background-image: url("assets/images/project-panorama.jpg");
   background-position: center 42%;
 }
 
 .portfolio-two {
-  background-image: url("/static/assets/images/project-zielone.jpg");
+  background-image: url("assets/images/project-zielone.jpg");
   background-position: center 48%;
 }
 
 .portfolio-three {
-  background-image: url("/static/assets/images/project-nowa-era.jpg");
+  background-image: url("assets/images/project-nowa-era.jpg");
   background-position: center 52%;
 }
 
 .portfolio-four {
-  background-image: url("/static/assets/images/project-river-view.jpg");
+  background-image: url("assets/images/project-river-view.jpg");
   background-position: center 50%;
 }
 
@@ -926,8 +1068,8 @@ th {
 }
 
 .public-page .references-section {
-  padding-top: clamp(58px, 6vw, 82px);
-  padding-bottom: clamp(58px, 6vw, 82px);
+  padding-top: clamp(48px, 5vw, 68px);
+  padding-bottom: clamp(48px, 5vw, 68px);
 }
 
 .public-page .references-section .three {
@@ -975,24 +1117,24 @@ th {
 }
 
 .avatar-one {
-  background-image: url("/static/assets/images/avatar-one.jpg");
+  background-image: url("assets/images/avatar-one.jpg");
 }
 
 .avatar-two {
-  background-image: url("/static/assets/images/avatar-two.jpg");
+  background-image: url("assets/images/avatar-two.jpg");
 }
 
 .avatar-three {
-  background-image: url("/static/assets/images/avatar-three.jpg");
+  background-image: url("assets/images/avatar-three.jpg");
 }
 
 .public-page .cta-band {
   gap: 6px;
   border: 0;
-  padding: clamp(44px, 5vw, 68px) clamp(22px, 5vw, 64px);
+  padding: clamp(38px, 4.5vw, 58px) clamp(22px, 5vw, 64px);
   background:
     linear-gradient(90deg, rgba(212, 145, 0, 0.94), rgba(219, 159, 18, 0.88)),
-    url("/static/assets/images/cta.jpg") center/cover;
+    url("assets/images/cta.jpg") center/cover;
 }
 
 .public-page .cta-band h2 {
@@ -1022,7 +1164,7 @@ th {
 }
 
 .public-page .contact-section {
-  padding: clamp(66px, 7vw, 96px) clamp(22px, 5vw, 64px);
+  padding: clamp(56px, 6vw, 82px) clamp(22px, 5vw, 64px);
   background: #fff;
 }
 
@@ -1373,19 +1515,19 @@ th {
 }
 
 .service-detail-media.homes {
-  background-image: url("/static/assets/images/service-homes.jpg");
+  background-image: url("assets/images/service-homes.jpg");
 }
 
 .service-detail-media.multifamily {
-  background-image: url("/static/assets/images/service-multifamily.jpg");
+  background-image: url("assets/images/service-multifamily.jpg");
 }
 
 .service-detail-media.renovation {
-  background-image: url("/static/assets/images/service-renovation.jpg");
+  background-image: url("assets/images/service-renovation.jpg");
 }
 
 .service-detail-media.commercial {
-  background-image: url("/static/assets/images/service-commercial.jpg");
+  background-image: url("assets/images/service-commercial.jpg");
 }
 
 .project-detail-media {
@@ -1397,22 +1539,22 @@ th {
 }
 
 .project-detail-media.project-panorama {
-  background-image: url("/static/assets/images/project-panorama.jpg");
+  background-image: url("assets/images/project-panorama.jpg");
   background-position: center 42%;
 }
 
 .project-detail-media.project-zielone {
-  background-image: url("/static/assets/images/project-zielone.jpg");
+  background-image: url("assets/images/project-zielone.jpg");
   background-position: center 48%;
 }
 
 .project-detail-media.project-nowa-era {
-  background-image: url("/static/assets/images/project-nowa-era.jpg");
+  background-image: url("assets/images/project-nowa-era.jpg");
   background-position: center 52%;
 }
 
 .project-detail-media.project-river-view {
-  background-image: url("/static/assets/images/project-river-view.jpg");
+  background-image: url("assets/images/project-river-view.jpg");
   background-position: center 50%;
 }
 
@@ -1651,7 +1793,7 @@ th {
     padding-top: 42px;
     background:
       linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.9) 45%, rgba(255, 255, 255, 0.12) 100%),
-      url("/static/assets/images/hero.jpg") center bottom/cover;
+      url("assets/images/hero.jpg") center bottom/cover;
   }
 
   .public-page .hero h1 {
@@ -1659,12 +1801,16 @@ th {
   }
 
   .public-page .section {
-    padding-top: 42px;
-    padding-bottom: 42px;
+    padding-top: 36px;
+    padding-bottom: 36px;
   }
 
   .public-page .section h2 {
-    margin-bottom: 22px;
+    margin-bottom: 18px;
+  }
+
+  .public-page .services-section {
+    padding-bottom: 42px;
   }
 
   .public-page .references-section,
@@ -1675,8 +1821,8 @@ th {
 
   .public-page .cta-band,
   .public-page .contact-section {
-    padding-top: 44px;
-    padding-bottom: 44px;
+    padding-top: 42px;
+    padding-bottom: 42px;
   }
 
   .public-page .grid.four,

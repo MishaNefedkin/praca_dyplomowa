@@ -3,13 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BuildWise | Panel administracyjny</title>
+    <title>BUDOMAX | Panel administracyjny</title>
     <link rel="stylesheet" href="/static/styles.css" />
     <script defer src="/static/admin.js"></script>
   </head>
   <body class="admin-body">
     <aside class="sidebar">
-      <a class="brand" href="/">BuildWise</a>
+      <a class="brand admin-brand" href="/" aria-label="BUDOMAX strona główna">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-copy">
+          <strong>BUDOMAX</strong>
+          <small>Panel admin</small>
+        </span>
+      </a>
       <nav>
         <a href="#dashboard">Dashboard</a>
         <a href="#clients">Klienci</a>
@@ -104,7 +110,7 @@
 
         <section id="offers" class="section">
           <h2>Oferty</h2>
-          <form id="offer-form" class="inline-form">
+          <form id="offer-form" class="inline-form admin-form">
             <input name="inquiry_id" type="number" placeholder="Inquiry ID" required />
             <input name="value" type="number" min="0" step="0.01" placeholder="Wartość" required />
             <select name="status">

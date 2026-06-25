@@ -47,6 +47,22 @@ track("page_view", { title: document.title });
 const PHONE_ALLOWED_PATTERN = /^[0-9+()\s-]*$/;
 const PHONE_DISALLOWED_PATTERN = /[^0-9+()\s-]/g;
 const MIN_PHONE_DIGITS = 6;
+const PHONE_ERROR_MESSAGE = "Numer telefonu może zawierać tylko cyfry, spacje, +, -, nawiasy i co najmniej 6 cyfr.";
+
+function sanitizePhone(value) {
+  return String(value || "").replace(PHONE_DISALLOWED_PATTERN, "");
+}
+
+function phoneDigitCount(value) {
+  return sanitizePhone(value).replace(/\D/g, "").length;
+}
+
+function validatePhoneField(field) {
+  field.value = sanitizePhone(field.value);
+  const isValid = !field.value || phoneDigitCount(field.value) >= MIN_PHONE_DIGITS;
+  field.setCustomValidity(isValid ? "" : PHONE_ERROR_MESSAGE);
+  return isValid;
+}
 
 window.addEventListener("beforeunload", () => {
   const timeOnPage = Math.round((Date.now() - pageStartedAt) / 1000);
@@ -84,12 +100,16 @@ document.querySelectorAll('input[name="phone"]').forEach((field) => {
     const pasted = event.clipboardData?.getData("text") || "";
     if (pasted && !PHONE_ALLOWED_PATTERN.test(pasted)) {
       event.preventDefault();
-      document.execCommand("insertText", false, pasted.replace(PHONE_DISALLOWED_PATTERN, ""));
+      const start = field.selectionStart ?? field.value.length;
+      const end = field.selectionEnd ?? field.value.length;
+      field.setRangeText(sanitizePhone(pasted), start, end, "end");
+      validatePhoneField(field);
     }
   });
   field.addEventListener("input", () => {
-    field.value = field.value.replace(PHONE_DISALLOWED_PATTERN, "");
+    validatePhoneField(field);
   });
+  field.addEventListener("blur", () => validatePhoneField(field));
 });
 
 document.getElementById("contact-form")?.addEventListener("submit", async (event) => {
@@ -97,11 +117,16 @@ document.getElementById("contact-form")?.addEventListener("submit", async (event
   const form = event.currentTarget;
   const status = document.getElementById("contact-status");
   const data = Object.fromEntries(new FormData(form).entries());
-  const phoneDigits = String(data.phone || "").replace(/\D/g, "").length;
-  if (data.phone && phoneDigits < MIN_PHONE_DIGITS) {
-    status.textContent = "Numer telefonu musi zawierać co najmniej 6 cyfr.";
+  const phoneField = form.querySelector('input[name="phone"]');
+  if (phoneField && !validatePhoneField(phoneField)) {
+    status.textContent = PHONE_ERROR_MESSAGE;
+    phoneField.reportValidity();
     return;
   }
+  if (!form.reportValidity()) {
+    return;
+  }
+  data.phone = phoneField?.value || data.phone;
   status.textContent = "Wysyłanie...";
 
   try {
