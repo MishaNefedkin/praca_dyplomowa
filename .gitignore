@@ -4,3 +4,4 @@ __pycache__/
 construction_crm.db
 .env
 .DS_Store
+.idea/

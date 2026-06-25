@@ -7,84 +7,111 @@
     <link rel="stylesheet" href="/static/styles.css" />
     <script defer src="/static/tracking.js"></script>
   </head>
-  <body>
-    <header class="site-header">
-      <a class="brand" href="/">BuildWise</a>
-      <nav>
-        <a href="#services">Usługi</a>
-        <a href="#portfolio">Realizacje</a>
-        <a href="#contact">Kontakt</a>
-        <a href="/admin">Panel</a>
-      </nav>
-    </header>
+  <body class="wireframe-page">
+    <div class="browser-shell">
+      <div class="browser-bar">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+        <span class="address">www.firma-budowlana.pl</span>
+      </div>
 
-    <main>
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Remonty · Budowa · Wykończenia</p>
-          <h1>Przejrzysta obsługa klienta dla nowoczesnej firmy budowlanej</h1>
-          <p>
-            Łączymy kontakt z klientem, analizę aktywności i przygotowanie ofert
-            w jednym systemie zaprojektowanym dla lokalnych usług budowlanych.
-          </p>
-          <div class="hero-actions">
-            <a class="button primary cta-track" href="#contact" data-cta="hero-contact">Poproś o wycenę</a>
-            <a class="button secondary cta-track" href="#portfolio" data-cta="hero-portfolio">Zobacz realizacje</a>
+      <header class="site-header">
+        <a class="brand" href="/">LOGO</a>
+        <nav>
+          <a href="#services">Usługi</a>
+          <a href="#portfolio">Realizacje</a>
+          <a href="#about">O firmie</a>
+          <a href="#contact">Kontakt</a>
+          <a class="nav-form cta-track" href="#contact" data-cta="nav-form">Formularz skrócony</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <h1>Kluczowa propozycja wartości firmy</h1>
+            <p>
+              Profesjonalne usługi remontowo-budowlane z szybkim kontaktem,
+              czytelną ofertą i stałą analizą potrzeb klienta.
+            </p>
+            <p>
+              System rejestruje zapytania, aktywność użytkowników oraz pomaga
+              sprawniej obsługiwać proces sprzedażowy.
+            </p>
+            <a class="button primary cta-track" href="#contact" data-cta="hero-offer">Zapytaj o ofertę →</a>
           </div>
-        </div>
-        <div class="hero-panel">
-          <span>Aktywne zapytania</span>
-          <strong>24</strong>
-          <span>Średni czas reakcji</span>
-          <strong>2h 15m</strong>
-          <span>Konwersja ofert</span>
-          <strong>61%</strong>
-        </div>
-      </section>
+          <div class="visual-placeholder large">zdjęcie / wizualizacja realizacji</div>
+        </section>
 
-      <section id="services" class="section">
-        <div class="section-title">
-          <p class="eyebrow">Zakres usług</p>
-          <h2>Kompleksowe prace budowlane i remontowe</h2>
-        </div>
-        <div class="grid three">
-          <article class="card">
-            <h3>Remonty mieszkań</h3>
-            <p>Planowanie, kosztorysowanie, wykończenia i bieżąca komunikacja z klientem.</p>
-          </article>
-          <article class="card">
-            <h3>Prace konstrukcyjne</h3>
-            <p>Realizacja etapów budowy z dokumentacją postępów i kontrolą zapytań.</p>
-          </article>
-          <article class="card">
-            <h3>Wykończenia wnętrz</h3>
-            <p>Koordynacja ekip, materiałów i ofert w uporządkowanym procesie CRM.</p>
-          </article>
-        </div>
-      </section>
+        <section id="services" class="section services-section">
+          <h2>Nasze usługi</h2>
+          <div class="grid three">
+            <article class="service-card">
+              <div class="visual-placeholder">ikona/zdjęcie</div>
+              <h3>Remonty mieszkań</h3>
+              <p>Kompleksowe prace wykończeniowe, modernizacje i adaptacje wnętrz.</p>
+              <a class="more-link cta-track" href="#contact" data-cta="service-renovation">Zobacz więcej →</a>
+            </article>
+            <article class="service-card">
+              <div class="visual-placeholder">ikona/zdjęcie</div>
+              <h3>Prace budowlane</h3>
+              <p>Realizacja etapów budowy, koordynacja prac i przygotowanie ofert.</p>
+              <a class="more-link cta-track" href="#contact" data-cta="service-building">Zobacz więcej →</a>
+            </article>
+            <article class="service-card">
+              <div class="visual-placeholder">ikona/zdjęcie</div>
+              <h3>Wykończenia wnętrz</h3>
+              <p>Dokładne kosztorysy, harmonogramy i kontakt dopasowany do klienta.</p>
+              <a class="more-link cta-track" href="#contact" data-cta="service-interiors">Zobacz więcej →</a>
+            </article>
+          </div>
+        </section>
 
-      <section id="portfolio" class="section alt">
-        <div class="section-title">
-          <p class="eyebrow">Realizacje</p>
-          <h2>Projekty prowadzone z naciskiem na przejrzystość</h2>
-        </div>
-        <div class="grid three portfolio">
-          <article><span>01</span><strong>Remont apartamentu 72 m²</strong></article>
-          <article><span>02</span><strong>Elewacja domu jednorodzinnego</strong></article>
-          <article><span>03</span><strong>Adaptacja lokalu usługowego</strong></article>
-        </div>
-      </section>
+        <section id="portfolio" class="section alt portfolio-section">
+          <h2>Portfolio zrealizowanych inwestycji</h2>
+          <div class="portfolio-grid">
+            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
+            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
+            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
+            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
+          </div>
+        </section>
 
-      <section id="contact" class="section contact-layout">
-        <div>
-          <p class="eyebrow">Kontakt</p>
-          <h2>Wyślij zapytanie ofertowe</h2>
-          <p>
-            Formularz tworzy rekord klienta, zapisuje zgodę RODO i wiąże wcześniejszą
-            anonimową aktywność sesji z profilem klienta.
-          </p>
+        <section id="about" class="section references-section">
+          <h2>Referencje klientów</h2>
+          <div class="grid three">
+            <article class="reference-card">
+              <strong>Anna K.</strong>
+              <p>Sprawny kontakt, jasna oferta i terminowa realizacja remontu.</p>
+            </article>
+            <article class="reference-card">
+              <strong>Piotr M.</strong>
+              <p>Firma szybko odpowiedziała na zapytanie i przygotowała kosztorys.</p>
+            </article>
+            <article class="reference-card">
+              <strong>DomInvest</strong>
+              <p>Przejrzysta komunikacja podczas całego procesu budowlanego.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="cta-band">
+          <h2>Zainteresowany realizacją? Skontaktuj się z nami</h2>
+          <a class="button primary cta-track" href="#contact" data-cta="middle-contact">Wyślij zapytanie</a>
+        </section>
+      </main>
+
+      <footer id="contact" class="footer-contact">
+        <div class="footer-info">
+          <h2>Dane kontaktowe / O firmie</h2>
+          <p>BuildWise · ul. Budowlana 12 · 40-000 Chorzów</p>
+          <p>kontakt@firma-budowlana.pl · +48 500 100 200</p>
+          <a href="/admin">Panel administracyjny</a>
         </div>
-        <form id="contact-form" class="form-card">
+
+        <form id="contact-form" class="footer-form">
+          <h2>Formularz kontaktowy</h2>
           <label>Imię i nazwisko<input name="name" required minlength="2" /></label>
           <label>Email<input name="email" type="email" required /></label>
           <label>Telefon<input name="phone" /></label>
@@ -93,10 +120,14 @@
             <input name="consent" type="checkbox" required />
             Wyrażam zgodę na kontakt i przetwarzanie danych zgodnie z RODO.
           </label>
-          <button class="button primary cta-track" type="submit" data-cta="contact-submit">Wyślij zapytanie</button>
+          <button class="button primary cta-track" type="submit" data-cta="footer-form-submit">Wyślij zapytanie</button>
           <p id="contact-status" class="status"></p>
         </form>
-      </section>
-    </main>
+      </footer>
+
+      <div class="measurement-note">
+        Punkt pomiarowy / zbierania danych behawioralnych zgodnie z mechanizmem zgód RODO
+      </div>
+    </div>
   </body>
 </html>
