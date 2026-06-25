@@ -1,7 +1,8 @@
 from datetime import datetime
+import json
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 InquiryStatus = Literal["new", "in_progress", "offer_sent", "closed"]
@@ -63,7 +64,8 @@ class InquiryCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=60)
     message: str = Field(min_length=5)
     session_id: str = Field(min_length=8, max_length=120)
-    consent_scope: str = "contact_and_analytics"
+    consent_granted: Literal[True]
+    consent_scope: Literal["contact_and_analytics"] = "contact_and_analytics"
 
 
 class InquiryAdminCreate(BaseModel):
@@ -114,10 +116,17 @@ class OfferRead(BaseModel):
 class TrackingEventCreate(BaseModel):
     session_id: str = Field(min_length=8, max_length=120)
     page_url: str = Field(min_length=1, max_length=500)
-    event_type: str = Field(min_length=1, max_length=80)
+    event_type: Literal["page_view", "page_leave", "cta_click", "form_interaction", "form_submit"]
     event_data: dict[str, Any] | None = None
     referrer: str | None = Field(default=None, max_length=500)
     time_on_page: int | None = Field(default=None, ge=0)
+
+    @field_validator("event_data")
+    @classmethod
+    def limit_event_data(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is not None and len(json.dumps(value)) > 2000:
+            raise ValueError("event_data is too large")
+        return value
 
 
 class ActivityLogRead(BaseModel):

@@ -959,6 +959,7 @@ th {
   }
 
   .public-page nav {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 

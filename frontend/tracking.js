@@ -1,18 +1,26 @@
 const API_BASE = window.location.origin;
 const SESSION_KEY = "bw_session_id";
+let memorySessionId = null;
 
 function uuid() {
-  if (crypto.randomUUID) return crypto.randomUUID();
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function getSessionId() {
-  let sessionId = localStorage.getItem(SESSION_KEY);
-  if (!sessionId) {
-    sessionId = uuid();
-    localStorage.setItem(SESSION_KEY, sessionId);
+  try {
+    let sessionId = localStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+      sessionId = uuid();
+      localStorage.setItem(SESSION_KEY, sessionId);
+    }
+    return sessionId;
+  } catch (error) {
+    if (!memorySessionId) {
+      memorySessionId = uuid();
+    }
+    return memorySessionId;
   }
-  return sessionId;
 }
 
 async function track(eventType, eventData = {}, timeOnPage = null) {
@@ -80,6 +88,7 @@ document.getElementById("contact-form")?.addEventListener("submit", async (event
         phone: data.phone || null,
         message: data.message,
         session_id: getSessionId(),
+        consent_granted: data.consent === "on",
         consent_scope: "contact_and_analytics",
       }),
     });
