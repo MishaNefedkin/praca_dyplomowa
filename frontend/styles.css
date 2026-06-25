@@ -431,6 +431,17 @@ th {
   margin-top: 16px;
 }
 
+.timeline pre {
+  overflow-x: auto;
+  max-height: 420px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f9fafb;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .inline-form {
   margin-bottom: 14px;
 }
@@ -438,6 +449,21 @@ th {
 .inline-form input,
 .inline-form select {
   max-width: 180px;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 @media (max-width: 900px) {

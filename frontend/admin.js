@@ -1,5 +1,12 @@
 const API_BASE = window.location.origin;
 const TOKEN_KEY = "bw_admin_token";
+const PAGE_LIMIT = 25;
+const listState = {
+  clients: { offset: 0, query: "" },
+  inquiries: { offset: 0 },
+  offers: { offset: 0 },
+  activity: { offset: 0 },
+};
 
 function token() {
   return localStorage.getItem(TOKEN_KEY);
@@ -42,6 +49,26 @@ function table(rows, columns, actions = null) {
   return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
+function buildListPath(path, params) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, value);
+    }
+  });
+  return `${path}?${query.toString()}`;
+}
+
+function renderPager(elementId, stateKey, rows) {
+  const state = listState[stateKey];
+  const currentPage = Math.floor(state.offset / PAGE_LIMIT) + 1;
+  document.getElementById(elementId).innerHTML = `
+    <button class="button secondary" data-page="${stateKey}" data-direction="previous" ${state.offset === 0 ? "disabled" : ""}>Poprzednia</button>
+    <span>Strona ${escapeHtml(currentPage)}</span>
+    <button class="button secondary" data-page="${stateKey}" data-direction="next" ${rows.length < PAGE_LIMIT ? "disabled" : ""}>Następna</button>
+  `;
+}
+
 function showApp(isLoggedIn) {
   document.getElementById("login-panel").classList.toggle("hidden", isLoggedIn);
   document.getElementById("admin-content").classList.toggle("hidden", !isLoggedIn);
@@ -65,10 +92,10 @@ async function loadDashboard() {
       api("/analytics/kpi"),
       api("/analytics/top-pages"),
       api("/analytics/alerts"),
-      api("/clients?limit=100"),
-      api(`/inquiries?limit=100${document.getElementById("inquiry-filter").value ? `&status=${document.getElementById("inquiry-filter").value}` : ""}`),
-      api("/offers?limit=100"),
-      api("/tracking/logs?limit=100"),
+      api(buildListPath("/clients", { limit: PAGE_LIMIT, offset: listState.clients.offset, q: listState.clients.query })),
+      api(buildListPath("/inquiries", { limit: PAGE_LIMIT, offset: listState.inquiries.offset, status: document.getElementById("inquiry-filter").value })),
+      api(buildListPath("/offers", { limit: PAGE_LIMIT, offset: listState.offers.offset })),
+      api(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset })),
     ]);
     status.textContent = "";
   } catch (error) {
@@ -100,8 +127,9 @@ async function loadDashboard() {
       { key: "phone", label: "Telefon" },
       { key: "created_at", label: "Utworzono", render: (row) => new Date(row.created_at).toLocaleString() },
     ],
-    (row) => `<button data-client="${row.id}" class="link-button">Timeline</button> <button data-anonymize="${row.id}" class="link-button danger">Anonimizuj</button>`,
+    (row) => `<button data-client="${row.id}" class="link-button">Timeline</button> <button data-export="${row.id}" class="link-button">Eksport</button> <button data-anonymize="${row.id}" class="link-button danger">Anonimizuj</button>`,
   );
+  renderPager("clients-pager", "clients", clients);
 
   document.getElementById("inquiries-table").innerHTML = table(inquiries, [
     { key: "id", label: "ID" },
@@ -110,6 +138,7 @@ async function loadDashboard() {
     { key: "message", label: "Wiadomość" },
     { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
   ]);
+  renderPager("inquiries-pager", "inquiries", inquiries);
 
   document.getElementById("offers-table").innerHTML = table(offers, [
     { key: "id", label: "ID" },
@@ -118,6 +147,7 @@ async function loadDashboard() {
     { key: "status", label: "Status" },
     { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
   ]);
+  renderPager("offers-pager", "offers", offers);
 
   document.getElementById("activity-table").innerHTML = table(logs, [
     { key: "id", label: "ID" },
@@ -128,6 +158,7 @@ async function loadDashboard() {
     { key: "time_on_page", label: "Czas" },
     { key: "logged_at", label: "Data", render: (row) => new Date(row.logged_at).toLocaleString() },
   ]);
+  renderPager("activity-pager", "activity", logs);
 }
 
 document.getElementById("login-form").addEventListener("submit", async (event) => {
@@ -149,7 +180,24 @@ document.getElementById("logout").addEventListener("click", () => {
   showApp(false);
 });
 
-document.getElementById("inquiry-filter").addEventListener("change", loadDashboard);
+document.getElementById("inquiry-filter").addEventListener("change", () => {
+  listState.inquiries.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("client-search-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  listState.clients.query = document.getElementById("client-search").value.trim();
+  listState.clients.offset = 0;
+  loadDashboard();
+});
+
+document.getElementById("client-search-reset").addEventListener("click", () => {
+  document.getElementById("client-search").value = "";
+  listState.clients.query = "";
+  listState.clients.offset = 0;
+  loadDashboard();
+});
 
 document.getElementById("offer-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -164,11 +212,23 @@ document.getElementById("offer-form").addEventListener("submit", async (event) =
 
 document.addEventListener("click", async (event) => {
   const timelineButton = event.target.closest("[data-client]");
+  const exportButton = event.target.closest("[data-export]");
   const anonymizeButton = event.target.closest("[data-anonymize]");
+  const pageButton = event.target.closest("[data-page]");
+  if (pageButton) {
+    const state = listState[pageButton.dataset.page];
+    const direction = pageButton.dataset.direction;
+    state.offset = direction === "next" ? state.offset + PAGE_LIMIT : Math.max(0, state.offset - PAGE_LIMIT);
+    loadDashboard();
+  }
   if (timelineButton) {
     const rows = await api(`/clients/${timelineButton.dataset.client}/timeline`);
     document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${escapeHtml(timelineButton.dataset.client)}</h3>` +
       rows.map((item) => `<p><strong>${escapeHtml(new Date(item.timestamp).toLocaleString())}</strong> ${escapeHtml(item.title)}</p>`).join("");
+  }
+  if (exportButton) {
+    const exported = await api(`/clients/${exportButton.dataset.export}/export`);
+    document.getElementById("client-timeline").innerHTML = `<h3>Eksport danych klienta #${escapeHtml(exportButton.dataset.export)}</h3><pre>${escapeHtml(JSON.stringify(exported, null, 2))}</pre>`;
   }
   if (anonymizeButton && confirm("Zanonimizować dane klienta?")) {
     await api(`/clients/${anonymizeButton.dataset.anonymize}/anonymize`, { method: "DELETE" });

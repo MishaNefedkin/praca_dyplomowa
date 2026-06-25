@@ -76,6 +76,49 @@ def anonymize_client(client_id: int, db: Annotated[Session, Depends(get_db)]) ->
     return client
 
 
+@router.get("/{client_id}/export", dependencies=[Depends(require_roles("admin", "manager"))])
+def export_client_data(client_id: int, db: Annotated[Session, Depends(get_db)]) -> dict:
+    client = db.get(models.Client, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    inquiries = (
+        db.query(models.Inquiry)
+        .filter(models.Inquiry.client_id == client_id)
+        .order_by(models.Inquiry.created_at.desc())
+        .all()
+    )
+    inquiry_ids = [inquiry.id for inquiry in inquiries]
+    offers = []
+    if inquiry_ids:
+        offers = (
+            db.query(models.Offer)
+            .filter(models.Offer.inquiry_id.in_(inquiry_ids))
+            .order_by(models.Offer.created_at.desc())
+            .all()
+        )
+
+    return {
+        "client": schemas.ClientRead.model_validate(client).model_dump(mode="json"),
+        "consents": [
+            schemas.ConsentRead.model_validate(consent).model_dump(mode="json")
+            for consent in db.query(models.Consent)
+            .filter(models.Consent.client_id == client_id)
+            .order_by(models.Consent.granted_at.desc())
+            .all()
+        ],
+        "inquiries": [schemas.InquiryRead.model_validate(inquiry).model_dump(mode="json") for inquiry in inquiries],
+        "offers": [schemas.OfferRead.model_validate(offer).model_dump(mode="json") for offer in offers],
+        "activity_logs": [
+            schemas.ActivityLogRead.model_validate(log).model_dump(mode="json")
+            for log in db.query(models.ActivityLog)
+            .filter(models.ActivityLog.client_id == client_id)
+            .order_by(models.ActivityLog.logged_at.desc())
+            .all()
+        ],
+    }
+
+
 @router.get(
     "/{client_id}/timeline",
     response_model=list[schemas.TimelineItem],

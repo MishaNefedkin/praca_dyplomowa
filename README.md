@@ -24,6 +24,8 @@ docker-compose.yml
 requirements.txt
 ```
 
+Szczegółowy opis architektury, ról, przepływów i głównych endpointów znajduje się w `docs/architecture.md`.
+
 ## Uruchomienie przez Docker
 
 ```bash
@@ -93,6 +95,16 @@ python -m pytest -q
 ```
 
 Testy używają osobnej bazy SQLite w katalogu tymczasowym systemu.
+
+## Kontrola jakości i CI
+
+Lokalne uruchomienie lintu:
+
+```bash
+ruff check .
+```
+
+Repozytorium zawiera workflow GitHub Actions w `.github/workflows/ci.yml`, który uruchamia lint i testy przy pushu oraz pull requestach.
 
 ## Migracje bazy danych
 

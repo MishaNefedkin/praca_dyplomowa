@@ -23,8 +23,8 @@
       <section id="login-panel" class="login-panel">
         <h1>Logowanie</h1>
         <form id="login-form" class="form-card compact">
-          <label>Login<input name="login" value="admin" required /></label>
-          <label>Hasło<input name="password" type="password" value="admin12345" required /></label>
+          <label>Login<input name="login" autocomplete="username" required /></label>
+          <label>Hasło<input name="password" type="password" autocomplete="current-password" required /></label>
           <button class="button primary" type="submit">Zaloguj</button>
           <p id="login-status" class="status"></p>
         </form>
@@ -55,8 +55,16 @@
         </section>
 
         <section id="clients" class="section">
-          <h2>Klienci</h2>
+          <div class="section-row">
+            <h2>Klienci</h2>
+            <form id="client-search-form" class="inline-form">
+              <input id="client-search" name="q" type="search" placeholder="Szukaj klienta" />
+              <button class="button secondary" type="submit">Szukaj</button>
+              <button id="client-search-reset" class="button secondary" type="button">Wyczyść</button>
+            </form>
+          </div>
           <div id="clients-table" class="table-shell"></div>
+          <div id="clients-pager" class="pager"></div>
           <div id="client-timeline" class="card timeline"></div>
         </section>
 
@@ -72,6 +80,7 @@
             </select>
           </div>
           <div id="inquiries-table" class="table-shell"></div>
+          <div id="inquiries-pager" class="pager"></div>
         </section>
 
         <section id="offers" class="section">
@@ -88,11 +97,13 @@
             <button class="button primary" type="submit">Dodaj ofertę</button>
           </form>
           <div id="offers-table" class="table-shell"></div>
+          <div id="offers-pager" class="pager"></div>
         </section>
 
         <section id="activity" class="section">
           <h2>Logi aktywności</h2>
           <div id="activity-table" class="table-shell"></div>
+          <div id="activity-pager" class="pager"></div>
         </section>
       </section>
     </main>

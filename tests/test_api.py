@@ -7,6 +7,7 @@ os.environ["ADMIN_LOGIN"] = "admin"
 os.environ["ADMIN_PASSWORD"] = "admin12345"
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["SEED_SAMPLE_DATA"] = "false"
+os.environ["LOGIN_RATE_LIMIT_MAX_FAILURES"] = "5"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -46,6 +47,27 @@ def test_login_and_protected_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_security_headers_are_set() -> None:
+    with TestClient(app) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+
+
+def test_failed_login_attempts_are_rate_limited() -> None:
+    with TestClient(app) as client:
+        for _ in range(5):
+            response = client.post("/auth/login", json={"login": "blocked-user", "password": "bad-password"})
+            assert response.status_code == 401
+
+        blocked_response = client.post("/auth/login", json={"login": "blocked-user", "password": "bad-password"})
+
+    assert blocked_response.status_code == 429
 
 
 def test_public_inquiry_links_existing_tracking_session_to_client() -> None:
@@ -139,6 +161,102 @@ def test_roles_limit_manager_write_access() -> None:
 
     assert analytics_response.status_code == 200
     assert create_client_response.status_code == 403
+
+
+def test_sales_role_can_write_clients_but_cannot_access_analytics() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        create_user_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "sales-user", "password": "sales12345", "role": "sales"},
+        )
+        assert create_user_response.status_code == 200
+
+        sales_headers = login_headers(client, "sales-user", "sales12345")
+        create_client_response = client.post(
+            "/clients",
+            headers=sales_headers,
+            json={"name": "Sales Client", "email": "sales.client@example.com"},
+        )
+        analytics_response = client.get("/analytics/kpi", headers=sales_headers)
+        logs_response = client.get("/tracking/logs", headers=sales_headers)
+
+    assert create_client_response.status_code == 200
+    assert analytics_response.status_code == 403
+    assert logs_response.status_code == 403
+
+
+def test_admin_anonymize_removes_personal_data_and_deactivates_consents() -> None:
+    with TestClient(app) as client:
+        inquiry_response = client.post(
+            "/inquiries",
+            json={
+                "name": "Private Client",
+                "email": "private.client@example.com",
+                "phone": "+48 602 000 000",
+                "message": "Please contact me about renovation.",
+                "session_id": "privacy-session-001",
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+        assert inquiry_response.status_code == 200
+        client_id = inquiry_response.json()["client_id"]
+
+        headers = auth_headers(client)
+        anonymize_response = client.delete(f"/clients/{client_id}/anonymize", headers=headers)
+        consents_response = client.get(f"/consents/client/{client_id}", headers=headers)
+
+    assert anonymize_response.status_code == 200
+    anonymized = anonymize_response.json()
+    assert anonymized["name"] == "Anonymized client"
+    assert anonymized["email"] is None
+    assert anonymized["phone"] is None
+    assert consents_response.status_code == 200
+    assert all(consent["active"] is False for consent in consents_response.json())
+
+
+def test_admin_can_export_client_personal_data() -> None:
+    session_id = "export-session-001"
+    with TestClient(app) as client:
+        tracking_response = client.post(
+            "/tracking/event",
+            json={
+                "session_id": session_id,
+                "page_url": "/",
+                "event_type": "page_view",
+                "event_data": {"source": "export-test"},
+                "referrer": None,
+                "time_on_page": 8,
+            },
+        )
+        assert tracking_response.status_code == 200
+
+        inquiry_response = client.post(
+            "/inquiries",
+            json={
+                "name": "Export Client",
+                "email": "export.client@example.com",
+                "phone": "+48 603 000 000",
+                "message": "Please export my CRM data.",
+                "session_id": session_id,
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+        assert inquiry_response.status_code == 200
+        client_id = inquiry_response.json()["client_id"]
+
+        headers = auth_headers(client)
+        export_response = client.get(f"/clients/{client_id}/export", headers=headers)
+
+    assert export_response.status_code == 200
+    exported = export_response.json()
+    assert exported["client"]["email"] == "export.client@example.com"
+    assert len(exported["consents"]) == 1
+    assert len(exported["inquiries"]) == 1
+    assert len(exported["activity_logs"]) == 1
 
 
 def test_clients_support_search_and_pagination() -> None:
