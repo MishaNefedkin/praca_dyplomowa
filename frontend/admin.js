@@ -5,6 +5,15 @@ function token() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -23,10 +32,10 @@ async function api(path, options = {}) {
 
 function table(rows, columns, actions = null) {
   if (!rows.length) return "<p class='muted'>Brak danych.</p>";
-  const head = columns.map((column) => `<th>${column.label}</th>`).join("") + (actions ? "<th>Akcje</th>" : "");
+  const head = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("") + (actions ? "<th>Akcje</th>" : "");
   const body = rows
     .map((row) => {
-      const cells = columns.map((column) => `<td>${column.render ? column.render(row) : row[column.key] ?? ""}</td>`).join("");
+      const cells = columns.map((column) => `<td>${escapeHtml(column.render ? column.render(row) : row[column.key])}</td>`).join("");
       return `<tr>${cells}${actions ? `<td>${actions(row)}</td>` : ""}</tr>`;
     })
     .join("");
@@ -40,15 +49,36 @@ function showApp(isLoggedIn) {
 }
 
 async function loadDashboard() {
-  const [kpi, topPages, alerts, clients, inquiries, offers, logs] = await Promise.all([
-    api("/analytics/kpi"),
-    api("/analytics/top-pages"),
-    api("/analytics/alerts"),
-    api("/clients"),
-    api(`/inquiries${document.getElementById("inquiry-filter").value ? `?status=${document.getElementById("inquiry-filter").value}` : ""}`),
-    api("/offers"),
-    api("/tracking/logs"),
-  ]);
+  const status = document.getElementById("admin-status");
+  status.textContent = "Ładowanie danych...";
+
+  let kpi;
+  let topPages;
+  let alerts;
+  let clients;
+  let inquiries;
+  let offers;
+  let logs;
+
+  try {
+    [kpi, topPages, alerts, clients, inquiries, offers, logs] = await Promise.all([
+      api("/analytics/kpi"),
+      api("/analytics/top-pages"),
+      api("/analytics/alerts"),
+      api("/clients?limit=100"),
+      api(`/inquiries?limit=100${document.getElementById("inquiry-filter").value ? `&status=${document.getElementById("inquiry-filter").value}` : ""}`),
+      api("/offers?limit=100"),
+      api("/tracking/logs?limit=100"),
+    ]);
+    status.textContent = "";
+  } catch (error) {
+    status.textContent = `Nie udało się załadować danych: ${error.message}`;
+    if (error.message.includes("Could not validate credentials")) {
+      localStorage.removeItem(TOKEN_KEY);
+      showApp(false);
+    }
+    return;
+  }
 
   document.getElementById("kpi-grid").innerHTML = [
     ["Klienci", kpi.clients_count],
@@ -56,10 +86,10 @@ async function loadDashboard() {
     ["Wysłane oferty", kpi.sent_offers_count],
     ["Konwersja", `${kpi.inquiry_to_offer_conversion_rate}%`],
     ["Aktywność 24h", kpi.activities_last_24h],
-  ].map(([label, value]) => `<article class="metric"><span>${label}</span><strong>${value}</strong></article>`).join("");
+  ].map(([label, value]) => `<article class="metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
 
-  document.getElementById("top-pages").innerHTML = topPages.map((page) => `<p><strong>${page.visits}</strong> ${page.page_url}</p>`).join("") || "<p class='muted'>Brak wizyt.</p>";
-  document.getElementById("alerts").innerHTML = alerts.map((alert) => `<p>${alert.message}</p>`).join("") || "<p class='muted'>Brak alertów.</p>";
+  document.getElementById("top-pages").innerHTML = topPages.map((page) => `<p><strong>${escapeHtml(page.visits)}</strong> ${escapeHtml(page.page_url)}</p>`).join("") || "<p class='muted'>Brak wizyt.</p>";
+  document.getElementById("alerts").innerHTML = alerts.map((alert) => `<p>${escapeHtml(alert.message)}</p>`).join("") || "<p class='muted'>Brak alertów.</p>";
 
   document.getElementById("clients-table").innerHTML = table(
     clients,
@@ -137,8 +167,8 @@ document.addEventListener("click", async (event) => {
   const anonymizeButton = event.target.closest("[data-anonymize]");
   if (timelineButton) {
     const rows = await api(`/clients/${timelineButton.dataset.client}/timeline`);
-    document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${timelineButton.dataset.client}</h3>` +
-      rows.map((item) => `<p><strong>${new Date(item.timestamp).toLocaleString()}</strong> ${item.title}</p>`).join("");
+    document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${escapeHtml(timelineButton.dataset.client)}</h3>` +
+      rows.map((item) => `<p><strong>${escapeHtml(new Date(item.timestamp).toLocaleString())}</strong> ${escapeHtml(item.title)}</p>`).join("");
   }
   if (anonymizeButton && confirm("Zanonimizować dane klienta?")) {
     await api(`/clients/${anonymizeButton.dataset.anonymize}/anonymize`, { method: "DELETE" });

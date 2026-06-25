@@ -6,10 +6,10 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth import require_roles
 from ..database import get_db
 
-router = APIRouter(prefix="/analytics", tags=["analytics"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/analytics", tags=["analytics"], dependencies=[Depends(require_roles("admin", "manager"))])
 
 
 @router.get("/kpi", response_model=schemas.KPIRead)

@@ -1,11 +1,11 @@
-from typing import Annotated
 from time import monotonic
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth import require_roles
 from ..database import get_db
 
 router = APIRouter(prefix="/tracking", tags=["tracking"])
@@ -44,15 +44,17 @@ def track_event(
     return log
 
 
-@router.get("/logs", response_model=list[schemas.ActivityLogRead], dependencies=[Depends(get_current_user)])
+@router.get("/logs", response_model=list[schemas.ActivityLogRead], dependencies=[Depends(require_roles("admin", "manager"))])
 def list_logs(
     db: Annotated[Session, Depends(get_db)],
     event_type: str | None = Query(default=None),
     client_id: int | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=300),
+    offset: int = Query(default=0, ge=0),
 ) -> list[models.ActivityLog]:
     query = db.query(models.ActivityLog)
     if event_type:
         query = query.filter(models.ActivityLog.event_type == event_type)
     if client_id:
         query = query.filter(models.ActivityLog.client_id == client_id)
-    return query.order_by(models.ActivityLog.logged_at.desc()).limit(300).all()
+    return query.order_by(models.ActivityLog.logged_at.desc()).offset(offset).limit(limit).all()
