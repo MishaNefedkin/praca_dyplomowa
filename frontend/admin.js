@@ -398,6 +398,8 @@ document.getElementById("offer-form").addEventListener("submit", async (event) =
     });
     event.currentTarget.reset();
     listState.offers.offset = 0;
+    renderOffersTable([createdOffer, ...latestOffers.filter((offer) => offer.id !== createdOffer.id)].slice(0, PAGE_LIMIT));
+    setStatus("Oferta została dodana.");
     await loadDashboard();
     if (!latestOffers.some((offer) => offer.id === createdOffer.id)) {
       renderOffersTable([createdOffer, ...latestOffers].slice(0, PAGE_LIMIT));
