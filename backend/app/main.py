@@ -8,13 +8,30 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import Base, SessionLocal, engine
-from .routers import analytics, auth, clients, consents, inquiries, offers, tracking
+from .routers import analytics, audit, auth, clients, consents, inquiries, offers, tracking
 from .services.seed import seed_admin_user, seed_sample_data
+
+
+def validate_runtime_settings() -> None:
+    environment = os.getenv("APP_ENV", "development").lower()
+    if environment not in {"production", "prod"}:
+        return
+
+    unsafe_values = {
+        "SECRET_KEY": {"change-this-secret-in-production", "change-this-secret-before-production"},
+        "ADMIN_PASSWORD": {"admin12345", "change-this-admin-password"},
+    }
+    for name, defaults in unsafe_values.items():
+        value = os.getenv(name)
+        if not value or value in defaults:
+            raise RuntimeError(f"{name} must be set to a non-default value in production")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    validate_runtime_settings()
+    if os.getenv("AUTO_CREATE_TABLES", "true").lower() in {"1", "true", "yes"}:
+        Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         seed_admin_user(db)
@@ -61,6 +78,7 @@ app.include_router(offers.router)
 app.include_router(tracking.router)
 app.include_router(analytics.router)
 app.include_router(consents.router)
+app.include_router(audit.router)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 if FRONTEND_DIR.exists():

@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -8,6 +9,18 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 InquiryStatus = Literal["new", "in_progress", "offer_sent", "closed"]
 OfferStatus = Literal["draft", "sent", "accepted", "rejected"]
 UserRole = Literal["admin", "sales", "manager"]
+PHONE_PATTERN = re.compile(r"^[0-9+()\s-]+$")
+
+
+def validate_phone_number(phone: str | None) -> str | None:
+    if phone is None:
+        return None
+    normalized = phone.strip()
+    if not normalized:
+        return None
+    if not PHONE_PATTERN.fullmatch(normalized):
+        raise ValueError("Phone number can contain only digits, spaces, +, -, and parentheses")
+    return normalized
 
 
 class Token(BaseModel):
@@ -41,6 +54,11 @@ class ClientBase(BaseModel):
     phone: str | None = Field(default=None, max_length=60)
     session_id: str | None = Field(default=None, max_length=120)
 
+    @field_validator("phone")
+    @classmethod
+    def phone_contains_only_phone_characters(cls, value: str | None) -> str | None:
+        return validate_phone_number(value)
+
 
 class ClientCreate(ClientBase):
     name: str = Field(min_length=2, max_length=160)
@@ -66,6 +84,11 @@ class InquiryCreate(BaseModel):
     session_id: str = Field(min_length=8, max_length=120)
     consent_granted: Literal[True]
     consent_scope: Literal["contact_and_analytics"] = "contact_and_analytics"
+
+    @field_validator("phone")
+    @classmethod
+    def phone_contains_only_phone_characters(cls, value: str | None) -> str | None:
+        return validate_phone_number(value)
 
 
 class InquiryAdminCreate(BaseModel):
@@ -141,6 +164,19 @@ class ActivityLogRead(BaseModel):
     referrer: str | None
     time_on_page: int | None
     logged_at: datetime
+
+
+class AuditLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actor_user_id: int | None
+    actor_login: str
+    action: str
+    entity_type: str
+    entity_id: int | None
+    details: dict[str, Any] | None
+    created_at: datetime
 
 
 class ConsentRead(BaseModel):

@@ -707,14 +707,14 @@ th {
 }
 
 .public-page .section {
-  padding: 24px clamp(22px, 5vw, 64px) 0;
+  padding: clamp(52px, 6vw, 78px) clamp(22px, 5vw, 64px);
   border: 0;
   background: #fff;
 }
 
 .public-page .section h2 {
   max-width: 1150px;
-  margin: 0 auto 16px;
+  margin: 0 auto 28px;
   color: #20232b;
   font-size: clamp(1.45rem, 2.5vw, 1.72rem);
 }
@@ -817,7 +817,7 @@ th {
 }
 
 .public-page .portfolio-section {
-  padding-top: 24px;
+  padding-top: clamp(58px, 6vw, 82px);
 }
 
 .public-page .portfolio-grid {
@@ -909,8 +909,8 @@ th {
 }
 
 .public-page .references-section {
-  padding-top: 8px;
-  padding-bottom: 16px;
+  padding-top: clamp(58px, 6vw, 82px);
+  padding-bottom: clamp(58px, 6vw, 82px);
 }
 
 .public-page .references-section .three {
@@ -972,7 +972,7 @@ th {
 .public-page .cta-band {
   gap: 6px;
   border: 0;
-  padding: 22px clamp(22px, 5vw, 64px) 24px;
+  padding: clamp(44px, 5vw, 68px) clamp(22px, 5vw, 64px);
   background:
     linear-gradient(90deg, rgba(212, 145, 0, 0.94), rgba(219, 159, 18, 0.88)),
     url("/static/assets/images/cta.jpg") center/cover;
@@ -1005,7 +1005,7 @@ th {
 }
 
 .public-page .contact-section {
-  padding: 52px clamp(22px, 5vw, 64px);
+  padding: clamp(66px, 7vw, 96px) clamp(22px, 5vw, 64px);
   background: #fff;
 }
 
@@ -1098,7 +1098,7 @@ th {
 .public-page .footer-contact {
   display: grid;
   gap: 30px;
-  padding: 44px clamp(22px, 5vw, 64px) 22px;
+  padding: 56px clamp(22px, 5vw, 64px) 28px;
   background:
     radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.08), transparent 30%),
     linear-gradient(135deg, #20252d, #11151b);
@@ -1639,6 +1639,27 @@ th {
 
   .public-page .hero h1 {
     font-size: 2.2rem;
+  }
+
+  .public-page .section {
+    padding-top: 42px;
+    padding-bottom: 42px;
+  }
+
+  .public-page .section h2 {
+    margin-bottom: 22px;
+  }
+
+  .public-page .references-section,
+  .public-page .portfolio-section {
+    padding-top: 42px;
+    padding-bottom: 42px;
+  }
+
+  .public-page .cta-band,
+  .public-page .contact-section {
+    padding-top: 44px;
+    padding-bottom: 44px;
   }
 
   .public-page .grid.four,

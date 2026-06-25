@@ -71,6 +71,12 @@ document.querySelectorAll("input, textarea").forEach((field) => {
   field.addEventListener("focus", () => track("form_interaction", { field: field.name, action: "focus" }), { once: true });
 });
 
+document.querySelectorAll('input[name="phone"]').forEach((field) => {
+  field.addEventListener("input", () => {
+    field.value = field.value.replace(/[^0-9+()\s-]/g, "");
+  });
+});
+
 document.getElementById("contact-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;

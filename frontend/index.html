@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BUDOMAX | Firma budowlana</title>
-    <link rel="stylesheet" href="/static/styles.css?v=budomax-ref-2" />
-    <script defer src="/static/tracking.js?v=budomax-ref-2"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=budomax-ref-3" />
+    <script defer src="/static/tracking.js?v=budomax-ref-3"></script>
   </head>
   <body class="public-page">
     <div class="site-shell">
@@ -196,7 +196,7 @@
             <h2>Formularz kontaktowy</h2>
             <label><span>Imię i nazwisko</span><input name="name" placeholder="Imię i nazwisko" required minlength="2" /></label>
             <label><span>Adres e-mail</span><input name="email" type="email" placeholder="Adres e-mail" required /></label>
-            <label><span>Telefon</span><input name="phone" placeholder="Telefon" /></label>
+            <label><span>Telefon</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Telefon" pattern="^[0-9+()\\s-]*$" maxlength="60" /></label>
             <label><span>Wiadomość</span><textarea name="message" placeholder="Wiadomość" required minlength="5"></textarea></label>
             <label class="check">
               <input name="consent" type="checkbox" required />

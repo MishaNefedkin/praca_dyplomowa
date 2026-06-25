@@ -57,6 +57,7 @@ Przed uruchomieniem poza środowiskiem demonstracyjnym zmień wartości `SECRET_
 - JWT, role `admin`, `sales`, `manager`;
 - obsługa zgód RODO i anonimizacji danych osobowych.
 - paginacja list oraz wyszukiwanie klientów;
+- audit log operacji administracyjnych, eksportów danych i zmian CRM;
 - testy automatyczne API.
 
 ## Konfiguracja
@@ -68,6 +69,8 @@ Najważniejsze zmienne środowiskowe znajdują się w `.env.example`:
 - `ADMIN_LOGIN`, `ADMIN_PASSWORD` - konto administratora tworzone przy starcie;
 - `SEED_SAMPLE_DATA` - włącza lub wyłącza dane demonstracyjne;
 - `CORS_ALLOWED_ORIGINS` - dozwolone originy dla zapytań przeglądarki.
+- `APP_ENV` - tryb aplikacji; w `production` wymagane są niedomyślne sekrety;
+- `AUTO_CREATE_TABLES` - automatyczne tworzenie tabel przy starcie, wygodne dla demo.
 
 Role użytkowników:
 
@@ -115,6 +118,14 @@ alembic upgrade head
 ```
 
 Aplikacja nadal tworzy tabele automatycznie przy starcie, co ułatwia lokalne demo, ale migracje są zalecanym sposobem utrzymywania schematu bazy danych.
+W środowisku produkcyjnym zalecane jest ustawienie `AUTO_CREATE_TABLES=false` i uruchamianie migracji przed startem aplikacji.
+
+## Audit log
+
+Operacje wykonywane przez użytkowników panelu, takie jak tworzenie i edycja klientów,
+tworzenie ofert, anonimizacja oraz eksport danych klienta, są zapisywane w tabeli
+`audit_logs`. Log można przeglądać w panelu administracyjnym oraz przez endpoint
+`GET /audit/logs`, dostępny dla ról `admin` i `manager`.
 
 ## Przydatne parametry API
 

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import require_roles
 from ..database import get_db
+from ..services.audit import record_audit_log
 from ..services.crm import create_inquiry_from_contact_form
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
@@ -29,28 +30,51 @@ def create_inquiry(payload: schemas.InquiryCreate, db: Annotated[Session, Depend
     return create_inquiry_from_contact_form(db, payload)
 
 
-@router.post("/admin", response_model=schemas.InquiryRead, dependencies=[Depends(require_roles("admin", "sales"))])
-def create_inquiry_admin(payload: schemas.InquiryAdminCreate, db: Annotated[Session, Depends(get_db)]) -> models.Inquiry:
+@router.post("/admin", response_model=schemas.InquiryRead)
+def create_inquiry_admin(
+    payload: schemas.InquiryAdminCreate,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin", "sales"))],
+) -> models.Inquiry:
     if not db.get(models.Client, payload.client_id):
         raise HTTPException(status_code=404, detail="Client not found")
     inquiry = models.Inquiry(**payload.model_dump())
     db.add(inquiry)
+    db.flush()
+    record_audit_log(
+        db,
+        actor,
+        action="inquiry.create",
+        entity_type="inquiry",
+        entity_id=inquiry.id,
+        details={"client_id": inquiry.client_id, "status": inquiry.status},
+    )
     db.commit()
     db.refresh(inquiry)
     return inquiry
 
 
-@router.put("/{inquiry_id}", response_model=schemas.InquiryRead, dependencies=[Depends(require_roles("admin", "sales"))])
+@router.put("/{inquiry_id}", response_model=schemas.InquiryRead)
 def update_inquiry(
     inquiry_id: int,
     payload: schemas.InquiryUpdate,
     db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin", "sales"))],
 ) -> models.Inquiry:
     inquiry = db.get(models.Inquiry, inquiry_id)
     if not inquiry:
         raise HTTPException(status_code=404, detail="Inquiry not found")
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    for key, value in changes.items():
         setattr(inquiry, key, value)
+    record_audit_log(
+        db,
+        actor,
+        action="inquiry.update",
+        entity_type="inquiry",
+        entity_id=inquiry.id,
+        details={"fields": sorted(changes.keys())},
+    )
     db.commit()
     db.refresh(inquiry)
     return inquiry

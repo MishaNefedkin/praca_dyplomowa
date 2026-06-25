@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import require_roles
 from ..database import get_db
+from ..services.audit import record_audit_log
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -31,12 +32,25 @@ def list_clients(
     return query.order_by(models.Client.created_at.desc()).offset(offset).limit(limit).all()
 
 
-@router.post("", response_model=schemas.ClientRead, dependencies=[Depends(require_roles("admin", "sales"))])
-def create_client(payload: schemas.ClientCreate, db: Annotated[Session, Depends(get_db)]) -> models.Client:
+@router.post("", response_model=schemas.ClientRead)
+def create_client(
+    payload: schemas.ClientCreate,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin", "sales"))],
+) -> models.Client:
     if db.query(models.Client).filter(models.Client.email == payload.email).first():
         raise HTTPException(status_code=409, detail="Client with this email already exists")
     client = models.Client(**payload.model_dump())
     db.add(client)
+    db.flush()
+    record_audit_log(
+        db,
+        actor,
+        action="client.create",
+        entity_type="client",
+        entity_id=client.id,
+        details={"has_email": client.email is not None},
+    )
     db.commit()
     db.refresh(client)
     return client
@@ -50,34 +64,65 @@ def get_client(client_id: int, db: Annotated[Session, Depends(get_db)]) -> model
     return client
 
 
-@router.put("/{client_id}", response_model=schemas.ClientRead, dependencies=[Depends(require_roles("admin", "sales"))])
-def update_client(client_id: int, payload: schemas.ClientUpdate, db: Annotated[Session, Depends(get_db)]) -> models.Client:
+@router.put("/{client_id}", response_model=schemas.ClientRead)
+def update_client(
+    client_id: int,
+    payload: schemas.ClientUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin", "sales"))],
+) -> models.Client:
     client = db.get(models.Client, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    for key, value in changes.items():
         setattr(client, key, value)
+    record_audit_log(
+        db,
+        actor,
+        action="client.update",
+        entity_type="client",
+        entity_id=client.id,
+        details={"fields": sorted(changes.keys())},
+    )
     db.commit()
     db.refresh(client)
     return client
 
 
-@router.delete("/{client_id}/anonymize", response_model=schemas.ClientRead, dependencies=[Depends(require_roles("admin"))])
-def anonymize_client(client_id: int, db: Annotated[Session, Depends(get_db)]) -> models.Client:
+@router.delete("/{client_id}/anonymize", response_model=schemas.ClientRead)
+def anonymize_client(
+    client_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
+) -> models.Client:
     client = db.get(models.Client, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    had_email = client.email is not None
     client.name = "Anonymized client"
     client.email = None
     client.phone = None
     db.query(models.Consent).filter(models.Consent.client_id == client.id).update({"active": False})
+    record_audit_log(
+        db,
+        actor,
+        action="client.anonymize",
+        entity_type="client",
+        entity_id=client.id,
+        details={"had_email": had_email},
+    )
     db.commit()
     db.refresh(client)
     return client
 
 
-@router.get("/{client_id}/export", dependencies=[Depends(require_roles("admin", "manager"))])
-def export_client_data(client_id: int, db: Annotated[Session, Depends(get_db)]) -> dict:
+@router.get("/{client_id}/export")
+def export_client_data(
+    client_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[models.User, Depends(require_roles("admin", "manager"))],
+) -> dict:
     client = db.get(models.Client, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -98,7 +143,7 @@ def export_client_data(client_id: int, db: Annotated[Session, Depends(get_db)]) 
             .all()
         )
 
-    return {
+    export_data = {
         "client": schemas.ClientRead.model_validate(client).model_dump(mode="json"),
         "consents": [
             schemas.ConsentRead.model_validate(consent).model_dump(mode="json")
@@ -117,6 +162,16 @@ def export_client_data(client_id: int, db: Annotated[Session, Depends(get_db)]) 
             .all()
         ],
     }
+    record_audit_log(
+        db,
+        actor,
+        action="client.export",
+        entity_type="client",
+        entity_id=client.id,
+        details={"sections": sorted(export_data.keys())},
+    )
+    db.commit()
+    return export_data
 
 
 @router.get(

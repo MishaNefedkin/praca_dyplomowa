@@ -33,6 +33,7 @@ Główne encje:
 - `ActivityLog` - zdarzenie aktywności na stronie, np. odsłona, kliknięcie CTA, wysłanie formularza.
 - `Consent` - zgoda klienta na kontakt i analitykę.
 - `User` - użytkownik panelu administracyjnego z rolą.
+- `AuditLog` - dziennik operacji pracowników na danych CRM i danych osobowych.
 
 Relacje:
 
@@ -72,6 +73,7 @@ System obsługuje:
 - anonimizację danych osobowych klienta;
 - dezaktywację zgód po anonimizacji;
 - eksport danych klienta wraz z zapytaniami, ofertami, zgodami i logami aktywności.
+- audit log eksportów, anonimizacji i zmian wykonywanych przez pracowników.
 
 ## Kluczowe endpointy API
 
@@ -91,6 +93,7 @@ System obsługuje:
 | `GET` | `/analytics/kpi` | admin, manager | Wskaźniki KPI |
 | `POST` | `/tracking/event` | publiczny | Zapis zdarzenia trackingowego |
 | `GET` | `/tracking/logs` | admin, manager | Lista logów aktywności |
+| `GET` | `/audit/logs` | admin, manager | Lista operacji administracyjnych |
 
 ## Bezpieczeństwo
 
@@ -103,6 +106,7 @@ System stosuje:
 - walidację danych wejściowych przez Pydantic;
 - ograniczenie rozmiaru danych trackingowych;
 - escapowanie danych renderowanych w panelu administracyjnym.
+- blokadę startu w trybie `production`, jeśli użyto domyślnych sekretów.
 
 ## Uruchamianie kontroli jakości
 

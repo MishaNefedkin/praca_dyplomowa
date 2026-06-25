@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import create_access_token, get_current_user, hash_password, require_roles, verify_password
 from ..database import get_db
+from ..services.audit import record_audit_log
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
@@ -64,12 +65,21 @@ def me(user: Annotated[models.User, Depends(get_current_user)]) -> models.User:
 def create_user(
     payload: schemas.UserCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[models.User, Depends(require_roles("admin"))],
+    actor: Annotated[models.User, Depends(require_roles("admin"))],
 ) -> models.User:
     if db.query(models.User).filter(models.User.login == payload.login).first():
         raise HTTPException(status_code=409, detail="User already exists")
     user = models.User(login=payload.login, password_hash=hash_password(payload.password), role=payload.role)
     db.add(user)
+    db.flush()
+    record_audit_log(
+        db,
+        actor,
+        action="user.create",
+        entity_type="user",
+        entity_id=user.id,
+        details={"login": user.login, "role": user.role},
+    )
     db.commit()
     db.refresh(user)
     return user

@@ -6,6 +6,7 @@ const listState = {
   inquiries: { offset: 0 },
   offers: { offset: 0 },
   activity: { offset: 0 },
+  audit: { offset: 0 },
 };
 
 function token() {
@@ -69,6 +70,14 @@ function renderPager(elementId, stateKey, rows) {
   `;
 }
 
+function setStatus(message) {
+  document.getElementById("admin-status").textContent = message;
+}
+
+function renderActionError(error) {
+  setStatus(`Operacja nie powiodła się: ${error.message}`);
+}
+
 function showApp(isLoggedIn) {
   document.getElementById("login-panel").classList.toggle("hidden", isLoggedIn);
   document.getElementById("admin-content").classList.toggle("hidden", !isLoggedIn);
@@ -86,9 +95,10 @@ async function loadDashboard() {
   let inquiries;
   let offers;
   let logs;
+  let auditLogs;
 
   try {
-    [kpi, topPages, alerts, clients, inquiries, offers, logs] = await Promise.all([
+    [kpi, topPages, alerts, clients, inquiries, offers, logs, auditLogs] = await Promise.all([
       api("/analytics/kpi"),
       api("/analytics/top-pages"),
       api("/analytics/alerts"),
@@ -96,6 +106,7 @@ async function loadDashboard() {
       api(buildListPath("/inquiries", { limit: PAGE_LIMIT, offset: listState.inquiries.offset, status: document.getElementById("inquiry-filter").value })),
       api(buildListPath("/offers", { limit: PAGE_LIMIT, offset: listState.offers.offset })),
       api(buildListPath("/tracking/logs", { limit: PAGE_LIMIT, offset: listState.activity.offset })),
+      api(buildListPath("/audit/logs", { limit: PAGE_LIMIT, offset: listState.audit.offset })),
     ]);
     status.textContent = "";
   } catch (error) {
@@ -159,6 +170,16 @@ async function loadDashboard() {
     { key: "logged_at", label: "Data", render: (row) => new Date(row.logged_at).toLocaleString() },
   ]);
   renderPager("activity-pager", "activity", logs);
+
+  document.getElementById("audit-table").innerHTML = table(auditLogs, [
+    { key: "id", label: "ID" },
+    { key: "actor_login", label: "Użytkownik" },
+    { key: "action", label: "Akcja" },
+    { key: "entity_type", label: "Obiekt" },
+    { key: "entity_id", label: "ID obiektu" },
+    { key: "created_at", label: "Data", render: (row) => new Date(row.created_at).toLocaleString() },
+  ]);
+  renderPager("audit-pager", "audit", auditLogs);
 }
 
 document.getElementById("login-form").addEventListener("submit", async (event) => {
@@ -202,12 +223,17 @@ document.getElementById("client-search-reset").addEventListener("click", () => {
 document.getElementById("offer-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  await api("/offers", {
-    method: "POST",
-    body: JSON.stringify({ inquiry_id: Number(data.inquiry_id), value: Number(data.value), status: data.status }),
-  });
-  event.currentTarget.reset();
-  loadDashboard();
+  try {
+    await api("/offers", {
+      method: "POST",
+      body: JSON.stringify({ inquiry_id: Number(data.inquiry_id), value: Number(data.value), status: data.status }),
+    });
+    event.currentTarget.reset();
+    setStatus("");
+    loadDashboard();
+  } catch (error) {
+    renderActionError(error);
+  }
 });
 
 document.addEventListener("click", async (event) => {
@@ -222,17 +248,33 @@ document.addEventListener("click", async (event) => {
     loadDashboard();
   }
   if (timelineButton) {
-    const rows = await api(`/clients/${timelineButton.dataset.client}/timeline`);
-    document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${escapeHtml(timelineButton.dataset.client)}</h3>` +
-      rows.map((item) => `<p><strong>${escapeHtml(new Date(item.timestamp).toLocaleString())}</strong> ${escapeHtml(item.title)}</p>`).join("");
+    try {
+      const rows = await api(`/clients/${timelineButton.dataset.client}/timeline`);
+      document.getElementById("client-timeline").innerHTML = `<h3>Timeline klienta #${escapeHtml(timelineButton.dataset.client)}</h3>` +
+        rows.map((item) => `<p><strong>${escapeHtml(new Date(item.timestamp).toLocaleString())}</strong> ${escapeHtml(item.title)}</p>`).join("");
+      setStatus("");
+    } catch (error) {
+      renderActionError(error);
+    }
   }
   if (exportButton) {
-    const exported = await api(`/clients/${exportButton.dataset.export}/export`);
-    document.getElementById("client-timeline").innerHTML = `<h3>Eksport danych klienta #${escapeHtml(exportButton.dataset.export)}</h3><pre>${escapeHtml(JSON.stringify(exported, null, 2))}</pre>`;
+    try {
+      const exported = await api(`/clients/${exportButton.dataset.export}/export`);
+      document.getElementById("client-timeline").innerHTML = `<h3>Eksport danych klienta #${escapeHtml(exportButton.dataset.export)}</h3><pre>${escapeHtml(JSON.stringify(exported, null, 2))}</pre>`;
+      setStatus("");
+      loadDashboard();
+    } catch (error) {
+      renderActionError(error);
+    }
   }
   if (anonymizeButton && confirm("Zanonimizować dane klienta?")) {
-    await api(`/clients/${anonymizeButton.dataset.anonymize}/anonymize`, { method: "DELETE" });
-    loadDashboard();
+    try {
+      await api(`/clients/${anonymizeButton.dataset.anonymize}/anonymize`, { method: "DELETE" });
+      setStatus("");
+      loadDashboard();
+    } catch (error) {
+      renderActionError(error);
+    }
   }
 });
 

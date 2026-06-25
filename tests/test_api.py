@@ -12,7 +12,7 @@ os.environ["LOGIN_RATE_LIMIT_MAX_FAILURES"] = "5"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from backend.app.database import Base, engine  # noqa: E402
-from backend.app.main import app  # noqa: E402
+from backend.app.main import app, validate_runtime_settings  # noqa: E402
 
 
 def setup_module() -> None:
@@ -109,6 +109,24 @@ def test_public_inquiry_links_existing_tracking_session_to_client() -> None:
     assert logs_response.json()[0]["client_id"] == client_id
 
 
+def test_public_inquiry_rejects_phone_letters() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/inquiries",
+            json={
+                "name": "Letter Phone",
+                "email": "letter.phone@example.com",
+                "phone": "aaaooa",
+                "message": "Please call me about construction.",
+                "session_id": "letter-phone-session",
+                "consent_granted": True,
+                "consent_scope": "contact_and_analytics",
+            },
+        )
+
+    assert response.status_code == 422
+
+
 def test_admin_can_create_offer_and_update_inquiry_status() -> None:
     with TestClient(app) as client:
         headers = auth_headers(client)
@@ -139,6 +157,53 @@ def test_admin_can_create_offer_and_update_inquiry_status() -> None:
 
     assert inquiries_response.status_code == 200
     assert any(inquiry["id"] == inquiry_id for inquiry in inquiries_response.json())
+
+
+def test_admin_actions_are_written_to_audit_log() -> None:
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        client_response = client.post(
+            "/clients",
+            headers=headers,
+            json={"name": "Audit Client", "email": "audit.client@example.com"},
+        )
+        assert client_response.status_code == 200
+        client_id = client_response.json()["id"]
+
+        export_response = client.get(f"/clients/{client_id}/export", headers=headers)
+        assert export_response.status_code == 200
+
+        audit_response = client.get("/audit/logs", headers=headers)
+
+    assert audit_response.status_code == 200
+    actions = [entry["action"] for entry in audit_response.json()]
+    assert "client.create" in actions
+    assert "client.export" in actions
+
+
+def test_audit_log_access_is_limited_by_role() -> None:
+    with TestClient(app) as client:
+        admin_headers = auth_headers(client)
+        manager_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "audit-manager", "password": "manager123", "role": "manager"},
+        )
+        assert manager_response.status_code == 200
+        sales_response = client.post(
+            "/auth/users",
+            headers=admin_headers,
+            json={"login": "audit-sales", "password": "sales12345", "role": "sales"},
+        )
+        assert sales_response.status_code == 200
+
+        manager_headers = login_headers(client, "audit-manager", "manager123")
+        sales_headers = login_headers(client, "audit-sales", "sales12345")
+        manager_audit_response = client.get("/audit/logs", headers=manager_headers)
+        sales_audit_response = client.get("/audit/logs", headers=sales_headers)
+
+    assert manager_audit_response.status_code == 200
+    assert sales_audit_response.status_code == 403
 
 
 def test_roles_limit_manager_write_access() -> None:
@@ -274,3 +339,16 @@ def test_clients_support_search_and_pagination() -> None:
     assert search_response.status_code == 200
     assert len(search_response.json()) == 1
     assert search_response.json()[0]["email"] == "alpha.search@example.com"
+
+
+def test_production_runtime_settings_reject_default_secret(monkeypatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("SECRET_KEY", "change-this-secret-before-production")
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-admin-password")
+
+    try:
+        validate_runtime_settings()
+    except RuntimeError as exc:
+        assert "SECRET_KEY" in str(exc)
+    else:
+        raise AssertionError("Production runtime settings accepted a default SECRET_KEY")
