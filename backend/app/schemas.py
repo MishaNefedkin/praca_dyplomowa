@@ -1,0 +1,164 @@
+from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+InquiryStatus = Literal["new", "in_progress", "offer_sent", "closed"]
+OfferStatus = Literal["draft", "sent", "accepted", "rejected"]
+UserRole = Literal["admin", "sales", "manager"]
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class LoginRequest(BaseModel):
+    login: str
+    password: str
+
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    login: str
+    role: UserRole
+    created_at: datetime
+
+
+class UserCreate(BaseModel):
+    login: str = Field(min_length=3, max_length=80)
+    password: str = Field(min_length=8, max_length=120)
+    role: UserRole = "sales"
+
+
+class ClientBase(BaseModel):
+    name: str | None = Field(default=None, max_length=160)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=60)
+    session_id: str | None = Field(default=None, max_length=120)
+
+
+class ClientCreate(ClientBase):
+    name: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+
+
+class ClientUpdate(ClientBase):
+    pass
+
+
+class ClientRead(ClientBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
+class InquiryCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+    phone: str | None = Field(default=None, max_length=60)
+    message: str = Field(min_length=5)
+    session_id: str = Field(min_length=8, max_length=120)
+    consent_scope: str = "contact_and_analytics"
+
+
+class InquiryAdminCreate(BaseModel):
+    client_id: int
+    message: str = Field(min_length=5)
+    status: InquiryStatus = "new"
+
+
+class InquiryUpdate(BaseModel):
+    status: InquiryStatus | None = None
+    message: str | None = Field(default=None, min_length=5)
+
+
+class InquiryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    client_id: int
+    status: InquiryStatus
+    message: str
+    created_at: datetime
+
+
+class OfferCreate(BaseModel):
+    inquiry_id: int
+    value: float = Field(ge=0)
+    status: OfferStatus = "draft"
+    deadline: datetime | None = None
+
+
+class OfferUpdate(BaseModel):
+    value: float | None = Field(default=None, ge=0)
+    status: OfferStatus | None = None
+    deadline: datetime | None = None
+
+
+class OfferRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    inquiry_id: int
+    value: float
+    status: OfferStatus
+    deadline: datetime | None
+    created_at: datetime
+
+
+class TrackingEventCreate(BaseModel):
+    session_id: str = Field(min_length=8, max_length=120)
+    page_url: str = Field(min_length=1, max_length=500)
+    event_type: str = Field(min_length=1, max_length=80)
+    event_data: dict[str, Any] | None = None
+    referrer: str | None = Field(default=None, max_length=500)
+    time_on_page: int | None = Field(default=None, ge=0)
+
+
+class ActivityLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    session_id: str
+    client_id: int | None
+    page_url: str
+    event_type: str
+    event_data: dict[str, Any] | None
+    referrer: str | None
+    time_on_page: int | None
+    logged_at: datetime
+
+
+class ConsentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    client_id: int
+    scope: str
+    granted_at: datetime
+    active: bool
+
+
+class KPIRead(BaseModel):
+    clients_count: int
+    new_inquiries_count: int
+    sent_offers_count: int
+    inquiry_to_offer_conversion_rate: float
+    activities_last_24h: int
+
+
+class TopPageRead(BaseModel):
+    page_url: str
+    visits: int
+
+
+class TimelineItem(BaseModel):
+    type: str
+    title: str
+    timestamp: datetime
+    data: dict[str, Any]

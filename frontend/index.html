@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BuildWise CRM | Firma budowlana</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script defer src="/static/tracking.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">BuildWise</a>
+      <nav>
+        <a href="#services">Usługi</a>
+        <a href="#portfolio">Realizacje</a>
+        <a href="#contact">Kontakt</a>
+        <a href="/admin">Panel</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Remonty · Budowa · Wykończenia</p>
+          <h1>Przejrzysta obsługa klienta dla nowoczesnej firmy budowlanej</h1>
+          <p>
+            Łączymy kontakt z klientem, analizę aktywności i przygotowanie ofert
+            w jednym systemie zaprojektowanym dla lokalnych usług budowlanych.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary cta-track" href="#contact" data-cta="hero-contact">Poproś o wycenę</a>
+            <a class="button secondary cta-track" href="#portfolio" data-cta="hero-portfolio">Zobacz realizacje</a>
+          </div>
+        </div>
+        <div class="hero-panel">
+          <span>Aktywne zapytania</span>
+          <strong>24</strong>
+          <span>Średni czas reakcji</span>
+          <strong>2h 15m</strong>
+          <span>Konwersja ofert</span>
+          <strong>61%</strong>
+        </div>
+      </section>
+
+      <section id="services" class="section">
+        <div class="section-title">
+          <p class="eyebrow">Zakres usług</p>
+          <h2>Kompleksowe prace budowlane i remontowe</h2>
+        </div>
+        <div class="grid three">
+          <article class="card">
+            <h3>Remonty mieszkań</h3>
+            <p>Planowanie, kosztorysowanie, wykończenia i bieżąca komunikacja z klientem.</p>
+          </article>
+          <article class="card">
+            <h3>Prace konstrukcyjne</h3>
+            <p>Realizacja etapów budowy z dokumentacją postępów i kontrolą zapytań.</p>
+          </article>
+          <article class="card">
+            <h3>Wykończenia wnętrz</h3>
+            <p>Koordynacja ekip, materiałów i ofert w uporządkowanym procesie CRM.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="portfolio" class="section alt">
+        <div class="section-title">
+          <p class="eyebrow">Realizacje</p>
+          <h2>Projekty prowadzone z naciskiem na przejrzystość</h2>
+        </div>
+        <div class="grid three portfolio">
+          <article><span>01</span><strong>Remont apartamentu 72 m²</strong></article>
+          <article><span>02</span><strong>Elewacja domu jednorodzinnego</strong></article>
+          <article><span>03</span><strong>Adaptacja lokalu usługowego</strong></article>
+        </div>
+      </section>
+
+      <section id="contact" class="section contact-layout">
+        <div>
+          <p class="eyebrow">Kontakt</p>
+          <h2>Wyślij zapytanie ofertowe</h2>
+          <p>
+            Formularz tworzy rekord klienta, zapisuje zgodę RODO i wiąże wcześniejszą
+            anonimową aktywność sesji z profilem klienta.
+          </p>
+        </div>
+        <form id="contact-form" class="form-card">
+          <label>Imię i nazwisko<input name="name" required minlength="2" /></label>
+          <label>Email<input name="email" type="email" required /></label>
+          <label>Telefon<input name="phone" /></label>
+          <label>Opis zapytania<textarea name="message" required minlength="5"></textarea></label>
+          <label class="check">
+            <input name="consent" type="checkbox" required />
+            Wyrażam zgodę na kontakt i przetwarzanie danych zgodnie z RODO.
+          </label>
+          <button class="button primary cta-track" type="submit" data-cta="contact-submit">Wyślij zapytanie</button>
+          <p id="contact-status" class="status"></p>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

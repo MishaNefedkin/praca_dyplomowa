@@ -1,0 +1,67 @@
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from . import models
+from .database import Base, SessionLocal, engine
+from .routers import analytics, auth, clients, consents, inquiries, offers, tracking
+from .services.seed import seed_admin_user, seed_sample_data
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_admin_user(db)
+        seed_sample_data(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(
+    title="Construction CRM Analytics API",
+    description="System wspomagający zarządzanie i analizę aktywności klientów firmy budowlanej.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router)
+app.include_router(clients.router)
+app.include_router(inquiries.router)
+app.include_router(offers.router)
+app.include_router(tracking.router)
+app.include_router(analytics.router)
+app.include_router(consents.router)
+
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "index.html")
+
+
+@app.get("/admin", include_in_schema=False)
+def admin() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "admin.html")
