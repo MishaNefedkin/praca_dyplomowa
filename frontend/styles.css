@@ -967,3 +967,151 @@ th {
     min-height: auto;
   }
 }
+
+/* Final public layout override: full-width page and stable desktop nav. */
+.public-page {
+  overflow-x: hidden;
+  background: #fff;
+}
+
+.public-page .site-shell {
+  width: 100%;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.public-page .site-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+  min-height: 82px;
+  padding: 0 clamp(28px, 6vw, 92px);
+}
+
+.public-page .brand {
+  flex: 0 0 auto;
+  font-size: clamp(1.65rem, 2.5vw, 2.25rem);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.public-page nav {
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: clamp(16px, 2.2vw, 30px);
+  font-size: clamp(0.94rem, 1.35vw, 1.08rem);
+}
+
+.public-page nav a {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.public-page .nav-form {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 11px 20px;
+  font-size: inherit;
+}
+
+.public-page .hero,
+.public-page .section,
+.public-page .footer-contact {
+  padding-right: clamp(28px, 6vw, 92px);
+  padding-left: clamp(28px, 6vw, 92px);
+}
+
+.public-page .hero {
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.8fr);
+}
+
+.public-page .services-section > h2,
+.public-page .services-section > .grid,
+.public-page .portfolio-section > h2,
+.public-page .portfolio-section > .portfolio-grid,
+.public-page .references-section > h2,
+.public-page .references-section > .grid {
+  max-width: 1180px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.public-page .portfolio-grid {
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+}
+
+.public-page .reference-card {
+  min-height: 190px;
+}
+
+.public-page .cta-band {
+  padding-right: clamp(28px, 6vw, 92px);
+  padding-left: clamp(28px, 6vw, 92px);
+}
+
+@media (max-width: 1080px) {
+  .public-page .site-header {
+    gap: 18px;
+  }
+
+  .public-page nav {
+    gap: 14px;
+    font-size: 0.94rem;
+  }
+
+  .public-page .nav-form {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 860px) {
+  .public-page .site-header {
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: auto;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .public-page nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .public-page .nav-form {
+    order: 10;
+  }
+
+  .public-page .hero,
+  .public-page .footer-contact {
+    grid-template-columns: 1fr;
+  }
+
+  .public-page .portfolio-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .public-page .portfolio-grid,
+  .public-page .three {
+    grid-template-columns: 1fr;
+  }
+
+  .public-page .hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .public-page .button {
+    width: 100%;
+  }
+}
