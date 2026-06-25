@@ -437,6 +437,10 @@ textarea {
   font-size: clamp(1.25rem, 2vw, 1.55rem);
 }
 
+.admin-body .section > h2 {
+  margin-bottom: 16px;
+}
+
 .metric span {
   color: var(--muted);
   font-weight: 700;
