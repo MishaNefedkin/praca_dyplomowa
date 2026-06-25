@@ -4,63 +4,62 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BuildWise CRM | Firma budowlana</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script defer src="/static/tracking.js"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=polished-1" />
+    <script defer src="/static/tracking.js?v=polished-1"></script>
   </head>
-  <body class="wireframe-page">
-    <div class="browser-shell">
-      <div class="browser-bar">
-        <span class="dot red"></span>
-        <span class="dot yellow"></span>
-        <span class="dot green"></span>
-        <span class="address">www.firma-budowlana.pl</span>
-      </div>
-
+  <body class="public-page">
+    <div class="site-shell">
       <header class="site-header">
-        <a class="brand" href="/">LOGO</a>
+        <a class="brand" href="/">BuildWise</a>
         <nav>
           <a href="#services">Usługi</a>
           <a href="#portfolio">Realizacje</a>
           <a href="#about">O firmie</a>
           <a href="#contact">Kontakt</a>
-          <a class="nav-form cta-track" href="#contact" data-cta="nav-form">Formularz skrócony</a>
+          <a class="nav-form cta-track" href="#contact" data-cta="nav-form">Bezpłatna wycena</a>
         </nav>
       </header>
 
       <main>
         <section class="hero">
           <div class="hero-copy">
-            <h1>Kluczowa propozycja wartości firmy</h1>
+            <span class="eyebrow">Firma remontowo-budowlana</span>
+            <h1>Prace budowlane prowadzone przejrzyście od pierwszego kontaktu</h1>
             <p>
-              Profesjonalne usługi remontowo-budowlane z szybkim kontaktem,
-              czytelną ofertą i stałą analizą potrzeb klienta.
+              Pomagamy klientom zaplanować remont, budowę lub wykończenie wnętrz.
+              Każde zapytanie trafia do systemu CRM, dzięki czemu kontakt,
+              oferta i historia ustaleń są uporządkowane w jednym miejscu.
             </p>
-            <p>
-              System rejestruje zapytania, aktywność użytkowników oraz pomaga
-              sprawniej obsługiwać proces sprzedażowy.
-            </p>
-            <a class="button primary cta-track" href="#contact" data-cta="hero-offer">Zapytaj o ofertę →</a>
+            <div class="hero-actions">
+              <a class="button primary cta-track" href="#contact" data-cta="hero-offer">Zapytaj o ofertę</a>
+              <a class="button secondary cta-track" href="#portfolio" data-cta="hero-portfolio">Zobacz realizacje</a>
+            </div>
           </div>
-          <div class="visual-placeholder large">zdjęcie / wizualizacja realizacji</div>
+          <div class="hero-photo" aria-label="Wizualizacja realizacji budowlanej">
+            <div class="hero-stat">
+              <strong>24h</strong>
+              <span>średni czas odpowiedzi na zapytanie</span>
+            </div>
+          </div>
         </section>
 
         <section id="services" class="section services-section">
           <h2>Nasze usługi</h2>
           <div class="grid three">
             <article class="service-card">
-              <div class="visual-placeholder">ikona/zdjęcie</div>
+              <div class="service-media renovation"></div>
               <h3>Remonty mieszkań</h3>
               <p>Kompleksowe prace wykończeniowe, modernizacje i adaptacje wnętrz.</p>
               <a class="more-link cta-track" href="#contact" data-cta="service-renovation">Zobacz więcej →</a>
             </article>
             <article class="service-card">
-              <div class="visual-placeholder">ikona/zdjęcie</div>
+              <div class="service-media construction"></div>
               <h3>Prace budowlane</h3>
               <p>Realizacja etapów budowy, koordynacja prac i przygotowanie ofert.</p>
               <a class="more-link cta-track" href="#contact" data-cta="service-building">Zobacz więcej →</a>
             </article>
             <article class="service-card">
-              <div class="visual-placeholder">ikona/zdjęcie</div>
+              <div class="service-media interiors"></div>
               <h3>Wykończenia wnętrz</h3>
               <p>Dokładne kosztorysy, harmonogramy i kontakt dopasowany do klienta.</p>
               <a class="more-link cta-track" href="#contact" data-cta="service-interiors">Zobacz więcej →</a>
@@ -71,10 +70,10 @@
         <section id="portfolio" class="section alt portfolio-section">
           <h2>Portfolio zrealizowanych inwestycji</h2>
           <div class="portfolio-grid">
-            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
-            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
-            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
-            <article class="visual-placeholder portfolio-item">miniatura realizacji</article>
+            <article class="portfolio-item portfolio-one"><span>Remont apartamentu 72 m²</span></article>
+            <article class="portfolio-item portfolio-two"><span>Elewacja domu jednorodzinnego</span></article>
+            <article class="portfolio-item portfolio-three"><span>Adaptacja lokalu usługowego</span></article>
+            <article class="portfolio-item portfolio-four"><span>Wykończenie segmentu</span></article>
           </div>
         </section>
 
@@ -83,15 +82,15 @@
           <div class="grid three">
             <article class="reference-card">
               <strong>Anna K.</strong>
-              <p>Sprawny kontakt, jasna oferta i terminowa realizacja remontu.</p>
+              <p>“Sprawny kontakt, jasna oferta i terminowa realizacja remontu.”</p>
             </article>
             <article class="reference-card">
               <strong>Piotr M.</strong>
-              <p>Firma szybko odpowiedziała na zapytanie i przygotowała kosztorys.</p>
+              <p>“Firma szybko odpowiedziała na zapytanie i przygotowała kosztorys.”</p>
             </article>
             <article class="reference-card">
               <strong>DomInvest</strong>
-              <p>Przejrzysta komunikacja podczas całego procesu budowlanego.</p>
+              <p>“Przejrzysta komunikacja podczas całego procesu budowlanego.”</p>
             </article>
           </div>
         </section>
@@ -124,10 +123,6 @@
           <p id="contact-status" class="status"></p>
         </form>
       </footer>
-
-      <div class="measurement-note">
-        Punkt pomiarowy / zbierania danych behawioralnych zgodnie z mechanizmem zgód RODO
-      </div>
     </div>
   </body>
 </html>
