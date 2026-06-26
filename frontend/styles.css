@@ -446,6 +446,16 @@ textarea {
   margin-bottom: 16px;
 }
 
+.admin-body .section-row {
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.admin-body .section-row .inline-form {
+  margin-left: auto;
+}
+
 .metric span {
   color: var(--muted);
   font-weight: 700;
@@ -543,6 +553,7 @@ th {
 }
 
 .filter-form {
+  flex-wrap: nowrap;
   margin-bottom: 0;
 }
 
@@ -663,6 +674,20 @@ th {
 
   .sidebar nav,
   .site-header {
+    flex-wrap: wrap;
+  }
+
+  .admin-body .section-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .admin-body .section-row .inline-form {
+    margin-left: 0;
+  }
+
+  .filter-form {
     flex-wrap: wrap;
   }
 }
